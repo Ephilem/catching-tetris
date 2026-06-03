@@ -59,6 +59,7 @@ int main(void) {
             }
 
             Game_UpdateUserInput(gameState.joystickState.dir);
+            Game_UpdateRotationInput(&gameState.joystickState);
             Game_PiecesSpawnSystem();
         }
 

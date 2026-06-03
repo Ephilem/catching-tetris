@@ -1,8 +1,11 @@
 #include "game.h"
 
+#include <string.h>
+
 #include "render.h"
 
 Game_State gameState = {0};
+
 
 void Game_SetMassBlock(int8_t x, int8_t y, uint8_t mass) {
     int ix = x + MASS_GRID_W_HALF;
@@ -158,6 +161,49 @@ void Game_UpdateUserInput(ivec2 currDir) {
             Game_MoveMass(input->lockedDir);
         }
     }
+}
+
+void Game_UpdateRotationInput(const Joystick_State* js) {
+    if (js->key1 == BTN_PRESSED) {
+        gameState.massGrid.rotTarget -= ROT_QUARTER_STEPS;
+        gameState.massGrid.rotating = 1;
+    }
+    if (js->key2 == BTN_PRESSED) {
+        gameState.massGrid.rotTarget += ROT_QUARTER_STEPS;
+        gameState.massGrid.rotating = 1;
+    }
+}
+
+void Game_RotateMassQuarter(int quarters) {
+    static uint8_t rotTmpGrid[MASS_GRID_W][MASS_GRID_H]; // buffer static so its isn't in the pile
+    const int dir = quarters > 0 ? 1 : -1;
+    int n = quarters > 0 ? quarters : -quarters;
+    int8_t mx, my;
+
+    while (n-- > 0) {
+        memset(rotTmpGrid, MASS_EMPTY, sizeof(rotTmpGrid));
+
+        for (mx = -MASS_GRID_W_HALF; mx < MASS_GRID_W_HALF; mx++) {
+            for (my = -MASS_GRID_H_HALF; my < MASS_GRID_H_HALF; my++) {
+                uint8_t v = gameState.massGrid.grid[mx + MASS_GRID_W_HALF][my + MASS_GRID_H_HALF];
+                if (v == MASS_EMPTY) continue;
+
+                int nx, ny;
+                if (dir > 0) { nx = -my; ny =  mx; }
+                else         { nx =  my; ny = -mx; }
+
+                int ix = nx + MASS_GRID_W_HALF;
+                int iy = ny + MASS_GRID_H_HALF;
+
+                if (ix < 0 || ix >= MASS_GRID_W || iy < 0 || iy >= MASS_GRID_H) continue;
+                rotTmpGrid[ix][iy] = v;
+            }
+        }
+
+        memcpy(gameState.massGrid.grid, rotTmpGrid, sizeof(rotTmpGrid));
+    }
+
+    Game_UpdateMassAabb();
 }
 
 void Game_SpawnRandomPiece() {

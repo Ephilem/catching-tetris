@@ -12,6 +12,8 @@
 typedef struct {
     ivec2 dir;
     uint8_t pressed : 2;
+    uint8_t key1 : 2;
+    uint8_t key2 : 2;
 } Joystick_State;
 
 void Joystick_Init();

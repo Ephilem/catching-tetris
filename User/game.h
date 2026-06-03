@@ -25,6 +25,9 @@
 #define GRAVITY_SPEED 30 // each 300ms
 #define SPAWN_PIECE_INTERVAL 500 // each 5s
 
+// number of step for each frame
+#define ROT_ANIM_SPEED 5
+
 #define PIECE_I 0
 #define PIECE_O 1
 #define PIECE_T 2
@@ -49,6 +52,10 @@ typedef struct {
     uint8_t grid[MASS_GRID_W][MASS_GRID_H];
     ivec2 pos;
     aabb aabb;
+
+    int16_t rotCur;
+    int16_t rotTarget;
+    uint8_t rotating;
 } Game_MassGrid;
 
 typedef struct {
@@ -132,6 +139,17 @@ void Game_ApplyGravity();
 void Game_UpdateUserInput(ivec2 currDir);
 
 void Game_FusePiece(Game_FallingPiece* piece);
+
+/**
+ * Read input then apply rotation to the mass if the corresponding button is pressed
+ */
+void Game_UpdateRotationInput(const Joystick_State* js);
+
+/**
+ * Rotate the mass of 90*quarters deg around the core
+ * @param quarters number of quarters. 0< is counter-clockwise
+ */
+void Game_RotateMassQuarter(int quarters);
 
 void Game_PiecesSpawnSystem();
 

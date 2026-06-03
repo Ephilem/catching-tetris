@@ -67,4 +67,23 @@ void Joystick_Read(volatile Joystick_State *state) {
     } else {
         state->pressed = BTN_HELD;
     }
+
+    uint8_t k1 = !((port2 >> 11) & 1);
+    uint8_t k2 = !((port2 >> 10) & 1);
+
+    if (!k1) {
+        state->key1 = BTN_RELEASED;
+    } else if (state->key1 == BTN_RELEASED) {
+        state->key1 = BTN_PRESSED;
+    } else {
+        state->key1 = BTN_HELD;
+    }
+
+    if (!k2) {
+        state->key2 = BTN_RELEASED;
+    } else if (state->key2 == BTN_RELEASED) {
+        state->key2 = BTN_PRESSED;
+    } else {
+        state->key2 = BTN_HELD;
+    }
 }
