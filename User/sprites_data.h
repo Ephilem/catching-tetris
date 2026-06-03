@@ -8,9 +8,14 @@ typedef struct {
     uint16_t height;
 } Sprite;
 
-extern const Sprite SPT_GreenCube;
+extern const Sprite SPT_CyanCube;
 extern const Sprite SPT_YellowCube;
+extern const Sprite SPT_MagentaCube;
+extern const Sprite SPT_GreenCube;
+extern const Sprite SPT_RedCube;
 extern const Sprite SPT_BlueCube;
+extern const Sprite SPT_OrangeCube;
+
 extern const Sprite SPT_GoldCube;
 
 #endif

@@ -60,20 +60,95 @@ void Game_SetMassPosition(ivec2 pos) {
     Render_FlagMassAsDirty();
 }
 
+void Game_MoveMass(ivec2 delta) {
+    ivec2 nextPos = {
+        gameState.massGrid.pos.x + delta.x,
+        gameState.massGrid.pos.y + delta.y
+    };
+    Game_SetMassPosition(nextPos);
+}
+
+void Game_UpdateUserInput(ivec2 currDir) {
+    Game_UserInput* input = &gameState.userInput;
+
+    ivec2 dir = {0,0};
+    if (currDir.x != 0 && currDir.y != 0) {
+        // remove diagonal input
+        dir = (ivec2){currDir.x, 0};
+    } else {
+        dir = currDir;
+    }
+
+    // if dir changed, full reset
+    if (dir.x != input->lockedDir.x || dir.y != input->lockedDir.y) {
+        input->lockedDir = dir;
+        input->dasState = INPUT_DAS_STATE_DAS;
+        input->dasCpt = 0;
+        input->arrCpt = 0;
+
+        // if the new direction is not idle, move now
+        if (input->lockedDir.x != 0 || input->lockedDir.y != 0) {
+            Game_MoveMass(input->lockedDir);
+        } else {
+            input->dasState = INPUT_DAS_STATE_IDLE;
+        }
+    }
+
+    // ticks system
+    if (input->dasState == INPUT_DAS_STATE_IDLE) return;
+
+    if (input->dasState == INPUT_DAS_STATE_DAS) {
+        input->dasCpt++;
+        if (input->dasCpt >= DAS_THRESHOLD) {
+            input->dasState = INPUT_DAS_STATE_ARR;
+            input->dasCpt = 0;
+            Game_MoveMass(input->lockedDir);
+        }
+    }
+
+    if (input->dasState == INPUT_DAS_STATE_ARR) {
+        input->arrCpt++;
+        if (input->arrCpt >= ARR_THRESHOLD) {
+            input->arrCpt = 0;
+            Game_MoveMass(input->lockedDir);
+        }
+    }
+}
+
+void Game_SpawnRandomPiece() {
+
+}
+
+void Game_ApplyGravity() {
+    int i;
+
+    for (i = 0; i < MAX_FALLING_PIECES; i++) {
+        Game_FallingPiece* piece = &gameState.fallingPieces[i];
+        if (!piece->active) continue;
+
+        // try to move down
+        piece->pos.y += 1;
+
+        // TODO collision test with mass, if collision, move back and set piece as inactive and add its blocks to the mass
+    }
+}
+
 void Game_Init() {
     Game_SetMassBlock(0, 0, MASS_CORE);
     Game_SetMassBlock(1, 0, MASS_SOLID);
     Game_SetMassBlock(-1, 0, MASS_SOLID);
     Game_SetMassBlock(0, 1, MASS_SOLID);
     Game_SetMassBlock(0, -1, MASS_SOLID);
-
-    Game_SetMassBlock(0, -2, MASS_SOLID);
-    Game_SetMassBlock(0, -3, MASS_SOLID);
-    Game_SetMassBlock(0, -4, MASS_SOLID);
-    Game_SetMassBlock(0, -5, MASS_SOLID);
     Game_UpdateMassAabb();
 
     Game_SetMassPosition((ivec2){GLOBAL_GRID_W/2, GLOBAL_GRID_H/2});
+
+    gameState.fallingPieces[0] = (Game_FallingPiece){
+        .active = 1,
+        .pos = {3, 3},
+        .type = 2,
+        .rotation = 3
+    };
 
     // initial render
     Render_FlagMassAsDirty();

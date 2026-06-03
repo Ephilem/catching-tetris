@@ -22,6 +22,8 @@ void Render_FlagMassAsDirty();
 void Render_DrawMass();
 void Render_DrawMassCore();
 
+void Render_RenderTetromino(const Game_FallingPiece* piece);
+
 void Render_Render();
 
 #endif

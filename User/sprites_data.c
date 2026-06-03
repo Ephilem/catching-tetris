@@ -19,13 +19,29 @@
 #define BLU4 RGB565(144, 144, 248)
 #define BLU5 RGB565(192, 192, 248)
 
-// #define CYA1
-//
-// #define ORA1
-//
-// #define MAG1
-//
-// #define RED1
+#define CYA1 RGB565(0, 96, 136)
+#define CYA2 RGB565(0, 152, 192)
+#define CYA3 RGB565(32, 200, 248)
+#define CYA4 RGB565(96, 232, 248)
+#define CYA5 RGB565(160, 248, 248)
+
+#define ORA1 RGB565(144, 56, 0)
+#define ORA2 RGB565(200, 88, 8)
+#define ORA3 RGB565(248, 120, 32)
+#define ORA4 RGB565(248, 160, 56)
+#define ORA5 RGB565(248, 216, 96)
+
+#define MAG1 RGB565(144, 0, 144)
+#define MAG2 RGB565(163, 0, 170)
+#define MAG3 RGB565(216, 40, 216)
+#define MAG4 RGB565(232, 96, 232)
+#define MAG5 RGB565(248, 160, 248)
+
+#define RED1 RGB565(160, 0, 0)
+#define RED2 RGB565(200, 8, 8)
+#define RED3 RGB565(240, 24, 24)
+#define RED4 RGB565(240, 64, 64)
+#define RED5 RGB565(248, 104, 104)
 
 
 #define GOL1 RGB565(121, 40, 0)
@@ -88,6 +104,72 @@ const Sprite SPT_BlueCube = {
     .width = SPT_Cube_W,
     .height = SPT_Cube_H
 };
+
+const unsigned short SPTData_CyanCube[SPT_Cube_W * SPT_Cube_H] = {
+    CYA1, CYA3, CYA3, CYA3, CYA3, CYA3, CYA3, CYA4,
+    CYA1, CYA5, CYA5, CYA5, CYA5, CYA5, CYA5, CYA4,
+    CYA1, CYA5, CYA5, CYA5, CYA5, CYA5, CYA4, CYA4,
+    CYA1, CYA5, CYA5, CYA5, CYA4, CYA4, CYA4, CYA4,
+    CYA1, CYA5, CYA4, CYA3, CYA3, CYA4, CYA4, CYA4,
+    CYA1, CYA5, CYA4, CYA3, CYA3, CYA4, CYA5, CYA4,
+    CYA1, CYA5, CYA4, CYA4, CYA4, CYA5, CYA5, CYA4,
+    CYA1, CYA2, CYA2, CYA2, CYA2, CYA2, CYA2, CYA3,
+};
+const Sprite SPT_CyanCube = {
+    .data = SPTData_CyanCube,
+    .width = SPT_Cube_W,
+    .height = SPT_Cube_H
+};
+
+const unsigned short SPTData_RedCube[SPT_Cube_W * SPT_Cube_H] = {
+    RED1, RED3, RED3, RED3, RED3, RED3, RED3, RED4,
+    RED1, RED5, RED5, RED5, RED5, RED5, RED5, RED4,
+    RED1, RED5, RED5, RED5, RED5, RED5, RED4, RED4,
+    RED1, RED5, RED5, RED5, RED4, RED4, RED4, RED4,
+    RED1, RED5, RED4, RED3, RED3, RED4, RED4, RED4,
+    RED1, RED5, RED4, RED3, RED3, RED4, RED5, RED4,
+    RED1, RED5, RED4, RED4, RED4, RED5, RED5, RED4,
+    RED1, RED2, RED2, RED2, RED2, RED2, RED2, RED3,
+};
+const Sprite SPT_RedCube = {
+    .data = SPTData_RedCube,
+    .width = SPT_Cube_W,
+    .height = SPT_Cube_H
+};
+
+const unsigned short SPTData_OrangeCube[SPT_Cube_W * SPT_Cube_H] = {
+    ORA1, ORA3, ORA3, ORA3, ORA3, ORA3, ORA3, ORA4,
+    ORA1, ORA5, ORA5, ORA5, ORA5, ORA5, ORA5, ORA4,
+    ORA1, ORA5, ORA5, ORA5, ORA5, ORA5, ORA4, ORA4,
+    ORA1, ORA5, ORA5, ORA5, ORA4, ORA4, ORA4, ORA4,
+    ORA1, ORA5, ORA4, ORA3, ORA3, ORA4, ORA4, ORA4,
+    ORA1, ORA5, ORA4, ORA3, ORA3, ORA4, ORA5, ORA4,
+    ORA1, ORA5, ORA4, ORA4, ORA4, ORA5, ORA5, ORA4,
+    ORA1, ORA2, ORA2, ORA2, ORA2, ORA2, ORA2, ORA3,
+};
+const Sprite SPT_OrangeCube = {
+    .data = SPTData_OrangeCube,
+    .width = SPT_Cube_W,
+    .height = SPT_Cube_H
+};
+
+const unsigned short SPTData_MagentaCube[SPT_Cube_W * SPT_Cube_H] = {
+    MAG1, MAG3, MAG3, MAG3, MAG3, MAG3, MAG3, MAG4,
+    MAG1, MAG5, MAG5, MAG5, MAG5, MAG5, MAG5, MAG4,
+    MAG1, MAG5, MAG5, MAG5, MAG5, MAG5, MAG4, MAG4,
+    MAG1, MAG5, MAG5, MAG5, MAG4, MAG4, MAG4, MAG4,
+    MAG1, MAG5, MAG4, MAG3, MAG3, MAG4, MAG4, MAG4,
+    MAG1, MAG5, MAG4, MAG3, MAG3, MAG4, MAG5, MAG4,
+    MAG1, MAG5, MAG4, MAG4, MAG4, MAG5, MAG5, MAG4,
+    MAG1, MAG2, MAG2, MAG2, MAG2, MAG2, MAG2, MAG3,
+};
+const Sprite SPT_MagentaCube = {
+    .data = SPTData_MagentaCube,
+    .width = SPT_Cube_W,
+    .height = SPT_Cube_H
+};
+
+
 
 const unsigned short SPTData_GoldCube[SPT_Cube_W * SPT_Cube_H] = {
     GOL4, GOL5, GOL5, GOL5, GOL5, GOL5, GOL5, GOL2,

@@ -31,6 +31,7 @@
 //===========================================================//
 
 int Init() {
+    // srand(SysTick->VAL);
     SystemCoreClockUpdate(); // met a jour les var de la clock, s'assure qeu tout est bien config.
     Lcd_Initializtion();
     Memory_Init();
@@ -47,21 +48,21 @@ int main(void) {
     Lcd_Clear(Black);
     Timer_StartMainTimer();
 
-    char chaine[32];
-
     while (1) {
-        if (gameState.irqFlags.flag_update) {
-            gameState.irqFlags.flag_update = 0;
+        if (gameState.irqFlags.flag_tick) {
+            gameState.irqFlags.flag_tick = 0;
 
-            Joystick_State js = gameState.joystickState;
-
-            if (js.dir.x != 0 || js.dir.y != 0) {
-                ivec2 nextPos = {
-                    gameState.massGrid.pos.x + js.dir.x,
-                    gameState.massGrid.pos.y + js.dir.y
-                };
-                Game_SetMassPosition(nextPos);
+            gameState.gravityCpt++;
+            if (gameState.gravityCpt >= GRAVITY_SPEED) {
+                gameState.gravityCpt = 0;
+                Game_ApplyGravity();
             }
+
+            Game_UpdateUserInput(gameState.joystickState.dir);
+        }
+
+        if (gameState.irqFlags.flag_render) {
+            gameState.irqFlags.flag_render = 0;
 
             Render_Render();
         }
@@ -73,12 +74,13 @@ void TIMER0_IRQHandler() {
     Joystick_Read(&gameState.joystickState);
 
     // flags updates
+    gameState.irqFlags.flag_tick = 1;
 
     // Render flag : up each 10ms*5 = 50ms
-    gameState.irqFlags.cpt_update++;
-    if (gameState.irqFlags.cpt_update >= 5) {
-        gameState.irqFlags.cpt_update = 0;
-        gameState.irqFlags.flag_update = 1;
+    gameState.irqFlags.cpt_render++;
+    if (gameState.irqFlags.cpt_render >= 4) {
+        gameState.irqFlags.cpt_render = 0;
+        gameState.irqFlags.flag_render = 1;
     }
 
     TIM_ClearIntPending(LPC_TIM0, TIM_MR0_INT);

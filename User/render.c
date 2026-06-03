@@ -8,6 +8,11 @@
 
 Render_State renderState = {0};
 
+const Sprite* const SPT_TETROMINOS[] = {
+    &SPT_CyanCube, &SPT_YellowCube, &SPT_MagentaCube,
+    &SPT_GreenCube, &SPT_RedCube, &SPT_BlueCube, &SPT_OrangeCube
+};
+
 void Render_FlagMassAsDirty() {
     renderState.massState.flag_massChanged = 1;
 }
@@ -101,7 +106,32 @@ void Render_DrawMass() {
     renderState.massState.prevGrid.pos = currPos;
 }
 
+void Render_RenderTetromino(const Game_FallingPiece* piece) {
+    const uint8_t (*shape)[4] = TETROMINOS[piece->type][piece->rotation];
+    int8_t tx, ty;
+
+    for (tx = 0; tx < 4; tx++) {
+        for (ty = 0; ty < 4; ty++) {
+            ivec2 absPos = {piece->pos.x + tx, piece->pos.y + ty};
+            if (absPos.x < 0 || absPos.y < 0) continue; // dont render out of the screen
+
+            // get prev (dy = -1) value
+            int8_t pmy = ty - 1;
+            uint8_t prevEmpty = 1;
+            if (pmy >= 0) {
+                prevEmpty = !shape[pmy][tx];
+            }
+
+            if (shape[ty][tx])
+                Render_BlitSprite(SPT_TETROMINOS[piece->type], absPos.x * 8, absPos.y * 8);
+            else if (prevEmpty)
+                Render_EraseCell(absPos);
+        }
+    }
+}
+
 void Render_Render() {
+    int i = 0;
     if (renderState.massState.flag_massChanged == 1) {
         renderState.massState.flag_massChanged = 0;
         Render_DrawMass();
@@ -109,4 +139,9 @@ void Render_Render() {
 
     // Always render because it has an animation
     Render_DrawMassCore();
+    for (i = 0; i < 4; i++) {
+        if (gameState.fallingPieces[i].active) {
+            Render_RenderTetromino(&gameState.fallingPieces[i]);
+        }
+    }
 }
