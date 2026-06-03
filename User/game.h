@@ -8,8 +8,8 @@
 
 #define GLOBAL_GRID_W (LCD_HEIGHT / 8)
 #define GLOBAL_GRID_H (LCD_WIDTH / 8)
-#define MASS_GRID_W 21
-#define MASS_GRID_H 21
+#define MASS_GRID_W GLOBAL_GRID_W
+#define MASS_GRID_H GLOBAL_GRID_H
 #define MASS_GRID_W_HALF (MASS_GRID_W / 2)
 #define MASS_GRID_H_HALF (MASS_GRID_H / 2)
 
@@ -22,7 +22,8 @@
 #define ARR_THRESHOLD 5
 
 #define MAX_FALLING_PIECES 4
-#define GRAVITY_SPEED 15 // each 100ms
+#define GRAVITY_SPEED 30 // each 300ms
+#define SPAWN_PIECE_INTERVAL 500 // each 5s
 
 #define PIECE_I 0
 #define PIECE_O 1
@@ -83,6 +84,7 @@ typedef struct {
     Game_MassGrid massGrid;
 
     uint8_t gravityCpt;
+    uint16_t spawnCpt;
     Game_FallingPiece fallingPieces[MAX_FALLING_PIECES];
 } Game_State;
 
@@ -103,7 +105,9 @@ __INLINE uint8_t Game_ReadMassBlock(int8_t x, int8_t y);
  * Update AABB that fit the mass for border collision checking
  */
 void Game_UpdateMassAabb();
+
 void Game_MoveMass(ivec2 delta);
+
 void Game_SetMassPosition(ivec2 pos);
 
 void Game_SpawnRandomPiece();
@@ -126,6 +130,10 @@ void Game_ApplyGravity();
  * update the user input state
  */
 void Game_UpdateUserInput(ivec2 currDir);
+
+void Game_FusePiece(Game_FallingPiece* piece);
+
+void Game_PiecesSpawnSystem();
 
 void Game_Init();
 
@@ -165,10 +173,30 @@ static const uint8_t TETROMINOS[7][4][4][4] = {
 
     // O
     {
-        {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
-        {{0, 1, 1, 0}, {0, 1, 1, 0}, {0, 1, 1, 0}, {0, 1, 1, 0}},
-        {{0, 1, 1, 0}, {0, 1, 1, 0}, {0, 1, 1, 0}, {0, 1, 1, 0}},
-        {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}},
+        {
+            {0, 0, 0, 0},
+            {0, 1, 1, 0},
+            {0, 1, 1, 0},
+            {0, 0, 0, 0}
+        },
+        {
+            {0, 0, 0, 0},
+            {0, 1, 1, 0},
+            {0, 1, 1, 0},
+            {0, 0, 0, 0}
+        },
+        {
+            {0, 0, 0, 0},
+            {0, 1, 1, 0},
+            {0, 1, 1, 0},
+            {0, 0, 0, 0}
+        },
+        {
+            {0, 0, 0, 0},
+            {0, 1, 1, 0},
+            {0, 1, 1, 0},
+            {0, 0, 0, 0}
+        },
     },
 
     // T

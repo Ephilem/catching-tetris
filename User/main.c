@@ -59,6 +59,7 @@ int main(void) {
             }
 
             Game_UpdateUserInput(gameState.joystickState.dir);
+            Game_PiecesSpawnSystem();
         }
 
         if (gameState.irqFlags.flag_render) {

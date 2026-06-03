@@ -5,13 +5,18 @@
 Game_State gameState = {0};
 
 void Game_SetMassBlock(int8_t x, int8_t y, uint8_t mass) {
-    uint8_t (*massGrid)[MASS_GRID_W][MASS_GRID_H] = &gameState.massGrid.grid;
-    (*massGrid)[x+MASS_GRID_W_HALF][y+MASS_GRID_H_HALF] = mass;
+    int ix = x + MASS_GRID_W_HALF;
+    int iy = y + MASS_GRID_H_HALF;
+    if (ix < 0 || ix >= MASS_GRID_W || iy < 0 || iy >= MASS_GRID_H) return;
+    gameState.massGrid.grid[ix][iy] = mass;
+
 }
 
 __INLINE uint8_t Game_ReadMassBlock(int8_t x, int8_t y) {
-    uint8_t (*massGrid)[MASS_GRID_W][MASS_GRID_H] = &gameState.massGrid.grid;
-    return (*massGrid)[x+MASS_GRID_W_HALF][y+MASS_GRID_H_HALF];
+    int ix = x + MASS_GRID_W_HALF;
+    int iy = y + MASS_GRID_H_HALF;
+    if (ix < 0 || ix >= MASS_GRID_W || iy < 0 || iy >= MASS_GRID_H) return MASS_EMPTY;
+    return gameState.massGrid.grid[ix][iy];
 }
 
 void Game_CalculatePieceAabb(Game_FallingPiece* piece) {
@@ -38,8 +43,8 @@ void Game_UpdateMassAabb() {
     aabb box = {127, 127, -127, -127};
 
     // TODO meilleur façon de faire surement
-    for (mx = -MASS_GRID_W_HALF; mx <= MASS_GRID_W_HALF; mx++) {
-        for (my = -MASS_GRID_H_HALF; my <= MASS_GRID_H_HALF; my++) {
+    for (mx = -MASS_GRID_W_HALF; mx < MASS_GRID_W_HALF; mx++) {
+        for (my = -MASS_GRID_H_HALF; my < MASS_GRID_H_HALF; my++) {
             if (gameState.massGrid.grid[mx+MASS_GRID_W_HALF][my+MASS_GRID_H_HALF] == MASS_EMPTY) continue;
             if (mx < box.min.x) box.min.x = mx;
             if (mx > box.max.x) box.max.x = mx;
@@ -73,7 +78,29 @@ void Game_SetMassPosition(ivec2 pos) {
     if (pos.y + box.min.y < 0 || pos.y + box.max.y >= GLOBAL_GRID_H)
         pos.y = currPos.y;
 
+    ivec2 delta = {
+        pos.x - currPos.x,
+        pos.y - currPos.y
+    };
     gameState.massGrid.pos = pos;
+
+
+    // test for collision
+    int i = 0;
+    for (i = 0; i < MAX_FALLING_PIECES; i++) {
+        Game_FallingPiece* piece = &gameState.fallingPieces[i];
+        if (!piece->active) continue;
+
+        if (Game_TestCollisionWithMass(piece, (ivec2){0,0})) {
+            // before fuse, we need to move the piece in the direction of the movement
+            piece->pos = (ivec2){
+                piece->pos.x + delta.x,
+                piece->pos.y + delta.y
+            };
+            Game_FusePiece(piece);
+            break;
+        }
+    }
 
     Render_FlagMassAsDirty();
 }
@@ -149,14 +176,17 @@ void Game_SpawnRandomPiece() {
     p->active = 1;
     p->type = rand_range(0, 6);
     p->rotation = rand_range(0, 3);
-    p->pos = (ivec2){GLOBAL_GRID_W - 3, -3};
+    // p->type = 0;
+    // p->rotation = 3;
+    p->pos = (ivec2){rand_range(2, GLOBAL_GRID_W-5), -3};
     Game_CalculatePieceAabb(p);
 }
 
 uint8_t Game_TestCollisionWithMass(const Game_FallingPiece* piece, ivec2 nextHop) {
     // first test: aabb test
     aabb pieceBox = Game_CalculateAbsoluteAabb(&piece->pos, &piece->aabb);
-    aabb massBox  = Game_CalculateAbsoluteAabb(&gameState.massGrid.pos, &gameState.massGrid.aabb);
+    ivec2 nextPos = ivec2_add(piece->pos, nextHop);
+    aabb massBox  = Game_CalculateAbsoluteAabb(&nextPos, &gameState.massGrid.aabb);
     if (!aabb_is_colliding(pieceBox, massBox)) return 0;
 
     // second test: presice collision test
@@ -168,8 +198,8 @@ uint8_t Game_TestCollisionWithMass(const Game_FallingPiece* piece, ivec2 nextHop
             if (!shape[ty][tx]) continue;
 
             // test collision with mass
-            int8_t cellX = piece->pos.x + tx + nextHop.x;
-            int8_t cellY = piece->pos.y + ty + nextHop.y;
+            int16_t cellX = nextPos.x + tx;
+            int16_t cellY = nextPos.y + ty;
             if (Game_ReadMassBlock(cellX - gameState.massGrid.pos.x, cellY - gameState.massGrid.pos.y) != MASS_EMPTY) {
                 return 1;
             }
@@ -193,7 +223,9 @@ void Game_FusePiece(Game_FallingPiece* piece) {
         }
     }
 
+    piece->active = 0;
     Game_UpdateMassAabb();
+    Render_FlagMassAsDirty();
 }
 
 void Game_ApplyGravity() {
@@ -209,7 +241,22 @@ void Game_ApplyGravity() {
         } else {
             piece->pos.y += 1;
         }
+
+        // delete if outside the screen and then spawn one more
+        if (piece->pos.y > GLOBAL_GRID_H) {
+            piece->active = 0;
+        }
     }
+}
+
+void Game_PiecesSpawnSystem() {
+    if (gameState.spawnCpt == 0) {
+        Game_SpawnRandomPiece();
+        gameState.spawnCpt = SPAWN_PIECE_INTERVAL;
+    } else {
+        gameState.spawnCpt--;
+    }
+
 }
 
 void Game_Init() {
@@ -221,14 +268,6 @@ void Game_Init() {
     Game_UpdateMassAabb();
 
     Game_SetMassPosition((ivec2){GLOBAL_GRID_W/2, GLOBAL_GRID_H/2});
-
-    gameState.fallingPieces[0] = (Game_FallingPiece){
-        .active = 1,
-        .pos = {3, 3},
-        .type = 2,
-        .rotation = 3
-    };
-    Game_CalculatePieceAabb(&gameState.fallingPieces[0]);
 
     // initial render
     Render_FlagMassAsDirty();

@@ -78,8 +78,8 @@ void Render_DrawMass() {
     const uint8_t moved = dx != 0 || dy != 0;
     int8_t mx, my;
 
-    for (mx = -MASS_GRID_W_HALF; mx <= MASS_GRID_W_HALF; mx++) {
-        for (my = -MASS_GRID_H_HALF; my <= MASS_GRID_H_HALF; my++) {
+    for (mx = -MASS_GRID_W_HALF; mx < MASS_GRID_W_HALF; mx++) {
+        for (my = -MASS_GRID_H_HALF; my < MASS_GRID_H_HALF; my++) {
             uint8_t curr = MASS_EMPTY;
             curr = grid->grid[mx + MASS_GRID_W_HALF][my + MASS_GRID_H_HALF];
 
@@ -87,7 +87,7 @@ void Render_DrawMass() {
             int8_t pmx = mx + dx;
             int8_t pmy = my + dy;
             uint8_t prev = MASS_EMPTY;
-            if (pmx >= -MASS_GRID_W_HALF && pmx <= MASS_GRID_W_HALF && pmy >= -MASS_GRID_H_HALF && pmy <= MASS_GRID_H_HALF) {
+            if (pmx >= -MASS_GRID_W_HALF && pmx < MASS_GRID_W_HALF && pmy >= -MASS_GRID_H_HALF && pmy < MASS_GRID_H_HALF) {
                 prev = prevGrid->grid[pmx + MASS_GRID_W_HALF][pmy + MASS_GRID_H_HALF];
             }
 
@@ -111,9 +111,9 @@ void Render_RenderTetromino(const Game_FallingPiece* piece) {
     int8_t tx, ty;
 
     for (tx = 0; tx < 4; tx++) {
-        for (ty = 0; ty < 4; ty++) {
+        for (ty = -1; ty < 4; ty++) {
             ivec2 absPos = {piece->pos.x + tx, piece->pos.y + ty};
-            if (absPos.x < 0 || absPos.y < 0) continue; // dont render out of the screen
+            if (absPos.x < 0 || absPos.y < 0 || absPos.x > GLOBAL_GRID_W || absPos.y > GLOBAL_GRID_H) continue; // dont render out of the screen
 
             // get prev (dy = -1) value
             int8_t pmy = ty - 1;
@@ -122,7 +122,14 @@ void Render_RenderTetromino(const Game_FallingPiece* piece) {
                 prevEmpty = !shape[pmy][tx];
             }
 
-            if (shape[ty][tx])
+            // skip if there is a mass cell here
+            int8_t mx = absPos.x - gameState.massGrid.pos.x;
+            int8_t my = absPos.y - gameState.massGrid.pos.y;
+            if (Game_ReadMassBlock(mx, my) != MASS_EMPTY) {
+                continue;
+            }
+
+            if (ty >= 0 && shape[ty][tx])
                 Render_BlitSprite(SPT_TETROMINOS[piece->type], absPos.x * 8, absPos.y * 8);
             else if (prevEmpty)
                 Render_EraseCell(absPos);
@@ -132,16 +139,18 @@ void Render_RenderTetromino(const Game_FallingPiece* piece) {
 
 void Render_Render() {
     int i = 0;
-    if (renderState.massState.flag_massChanged == 1) {
-        renderState.massState.flag_massChanged = 0;
-        Render_DrawMass();
-    }
 
-    // Always render because it has an animation
-    Render_DrawMassCore();
     for (i = 0; i < 4; i++) {
         if (gameState.fallingPieces[i].active) {
             Render_RenderTetromino(&gameState.fallingPieces[i]);
         }
     }
+
+    // if (renderState.massState.flag_massChanged == 1) {
+        // renderState.massState.flag_massChanged = 0;
+        Render_DrawMass();
+    // }
+
+    // Always render because it has an animation
+    Render_DrawMassCore();
 }
