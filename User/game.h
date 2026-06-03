@@ -57,6 +57,7 @@ typedef struct {
     uint8_t rotation;
 
     ivec2 pos; // up left of the 4x4 piece grid
+    aabb aabb;
 } Game_FallingPiece;
 
 /**
@@ -106,6 +107,15 @@ void Game_MoveMass(ivec2 delta);
 void Game_SetMassPosition(ivec2 pos);
 
 void Game_SpawnRandomPiece();
+
+/**
+ * Test if there is a collision with the mass if the piece is moved to the next position
+ * @param piece piece to test
+ * @param nextHop position of the piece if it moves (relative to the current position)
+ * @return 1 if there is a collision, 0 otherwise
+ */
+uint8_t Game_TestCollisionWithMass(const Game_FallingPiece* piece, ivec2 nextHop);
+
 
 /**
  * bring down all pieces, and test for collision with the mass

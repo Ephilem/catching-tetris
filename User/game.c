@@ -14,6 +14,24 @@ __INLINE uint8_t Game_ReadMassBlock(int8_t x, int8_t y) {
     return (*massGrid)[x+MASS_GRID_W_HALF][y+MASS_GRID_H_HALF];
 }
 
+void Game_CalculatePieceAabb(Game_FallingPiece* piece) {
+    aabb box = {3, 3, 0, 0};
+    const uint8_t (*shape)[4] = TETROMINOS[piece->type][piece->rotation];
+    int8_t tx, ty;
+
+    for (tx = 0; tx < 4; tx++) {
+        for (ty = 0; ty < 4; ty++) {
+            if (!shape[ty][tx]) continue;
+            if (tx < box.min.x) box.min.x = tx;
+            if (tx > box.max.x) box.max.x = tx;
+            if (ty < box.min.y) box.min.y = ty;
+            if (ty > box.max.y) box.max.y = ty;
+        }
+    }
+
+    piece->aabb = box;
+}
+
 void Game_UpdateMassAabb() {
     // calculate aabb
     int8_t mx, my;
@@ -33,15 +51,15 @@ void Game_UpdateMassAabb() {
     gameState.massGrid.aabb = box;
 }
 
-__INLINE aabb Game_GetMassAbsoluteAabb() {
+__INLINE aabb Game_CalculateAbsoluteAabb(const ivec2 *pos, const aabb *localAabb) {
     return (aabb){
         .min = {
-            gameState.massGrid.aabb.min.x + gameState.massGrid.pos.x,
-            gameState.massGrid.aabb.min.y + gameState.massGrid.pos.y
+            localAabb->min.x + pos->x,
+            localAabb->min.y + pos->y
         },
         .max = {
-            gameState.massGrid.aabb.max.x + gameState.massGrid.pos.x,
-            gameState.massGrid.aabb.max.y + gameState.massGrid.pos.y
+            localAabb->max.x + pos->x,
+            localAabb->max.y + pos->y
         }
     };
 }
@@ -116,7 +134,66 @@ void Game_UpdateUserInput(ivec2 currDir) {
 }
 
 void Game_SpawnRandomPiece() {
+    // find a avalaible place
+    int i;
+    Game_FallingPiece* p = NULL;
+    for (i = 0; i < MAX_FALLING_PIECES; i++) {
+        if (!gameState.fallingPieces[i].active) {
+            p = &gameState.fallingPieces[i];
+            break;
+        }
+    }
 
+    if (!p) return;
+
+    p->active = 1;
+    p->type = rand_range(0, 6);
+    p->rotation = rand_range(0, 3);
+    p->pos = (ivec2){GLOBAL_GRID_W - 3, -3};
+    Game_CalculatePieceAabb(p);
+}
+
+uint8_t Game_TestCollisionWithMass(const Game_FallingPiece* piece, ivec2 nextHop) {
+    // first test: aabb test
+    aabb pieceBox = Game_CalculateAbsoluteAabb(&piece->pos, &piece->aabb);
+    aabb massBox  = Game_CalculateAbsoluteAabb(&gameState.massGrid.pos, &gameState.massGrid.aabb);
+    if (!aabb_is_colliding(pieceBox, massBox)) return 0;
+
+    // second test: presice collision test
+    const uint8_t (*shape)[4] = TETROMINOS[piece->type][piece->rotation];
+    int8_t tx, ty;
+
+    for (tx = 0; tx < 4; tx++) {
+        for (ty = 0; ty < 4; ty++) {
+            if (!shape[ty][tx]) continue;
+
+            // test collision with mass
+            int8_t cellX = piece->pos.x + tx + nextHop.x;
+            int8_t cellY = piece->pos.y + ty + nextHop.y;
+            if (Game_ReadMassBlock(cellX - gameState.massGrid.pos.x, cellY - gameState.massGrid.pos.y) != MASS_EMPTY) {
+                return 1;
+            }
+        }
+    }
+
+    return 0;
+}
+
+void Game_FusePiece(Game_FallingPiece* piece) {
+    const uint8_t (*shape)[4] = TETROMINOS[piece->type][piece->rotation];
+    int8_t tx, ty;
+
+    for (tx = 0; tx < 4; tx++) {
+        for (ty = 0; ty < 4; ty++) {
+            if (!shape[ty][tx]) continue;
+
+            int8_t cellX = piece->pos.x + tx;
+            int8_t cellY = piece->pos.y + ty;
+            Game_SetMassBlock(cellX - gameState.massGrid.pos.x, cellY - gameState.massGrid.pos.y, MASS_SOLID);
+        }
+    }
+
+    Game_UpdateMassAabb();
 }
 
 void Game_ApplyGravity() {
@@ -126,10 +203,12 @@ void Game_ApplyGravity() {
         Game_FallingPiece* piece = &gameState.fallingPieces[i];
         if (!piece->active) continue;
 
-        // try to move down
-        piece->pos.y += 1;
-
-        // TODO collision test with mass, if collision, move back and set piece as inactive and add its blocks to the mass
+        ivec2 nextHop = {0, 1};
+        if (Game_TestCollisionWithMass(piece, nextHop)) {
+            Game_FusePiece(piece);
+        } else {
+            piece->pos.y += 1;
+        }
     }
 }
 
@@ -149,6 +228,7 @@ void Game_Init() {
         .type = 2,
         .rotation = 3
     };
+    Game_CalculatePieceAabb(&gameState.fallingPieces[0]);
 
     // initial render
     Render_FlagMassAsDirty();
