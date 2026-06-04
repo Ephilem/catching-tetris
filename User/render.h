@@ -19,10 +19,12 @@ extern Render_State renderState;
 void Render_BlitSprite(const Sprite* sprite, int x, int y);
 
 void Render_FlagMassAsDirty();
+void Render_EraseCell(ivec2 cell);
 void Render_DrawMass();
 void Render_DrawMassCore();
 void Render_DrawRotatedMass(int16_t cos_v, int16_t sin_v);
 void Render_StepAndDrawRotation();
+void Render_ErasePiece(const Game_FallingPiece* piece);
 
 void Render_RenderTetromino(const Game_FallingPiece* piece);
 

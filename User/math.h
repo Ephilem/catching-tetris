@@ -56,4 +56,28 @@ static inline int16_t cos_q8(int step) {
     return sin_q8(step + ROT_QUARTER_STEPS);
 }
 
+
+static inline int floordiv8(int v) {
+    return (v >= 0) ? (v / 8) : -((7 - v) / 8);
+}
+
+// from https://gist.github.com/foobaz/3287f153d125277eefea
+static uint16_t isqrt32(uint32_t x) {
+    uint32_t rem = 0, root = 0;
+    int i;
+
+    for (i = 32 / 2; i > 0; i--) {
+        root <<= 1;
+        rem = (rem << 2) | (x >> (32 - 2));
+        x <<= 2;
+        if (root < rem) {
+            rem -= root | 1;
+            root += 2;
+        }
+    }
+
+    return root >> 1;
+}
+
+
 #endif

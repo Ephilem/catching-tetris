@@ -26,7 +26,7 @@
 #define SPAWN_PIECE_INTERVAL 500 // each 5s
 
 // number of step for each frame
-#define ROT_ANIM_SPEED 5
+#define ROT_ANIM_SPEED 3
 
 #define PIECE_I 0
 #define PIECE_O 1
@@ -41,7 +41,7 @@
  */
 typedef struct {
     volatile uint8_t cpt_render;
-    volatile uint8_t cpt_tick;
+    volatile uint8_t cpt_tick; // number of tick since flag is up
 
     volatile uint8_t flag_render: 1;
     volatile uint8_t flag_tick: 1;
@@ -59,7 +59,8 @@ typedef struct {
 } Game_MassGrid;
 
 typedef struct {
-    uint8_t active; // differenciate array cell with real data in it
+    uint8_t active : 1; // differenciate array cell with real data in it
+    uint8_t moved : 1; // redraw only when moved
 
     uint8_t type; // 0-6
     uint8_t rotation;
@@ -119,6 +120,8 @@ void Game_SetMassPosition(ivec2 pos);
 
 void Game_SpawnRandomPiece();
 
+__INLINE aabb Game_CalculateAbsoluteAabb(const ivec2 *pos, const aabb *localAabb);
+
 /**
  * Test if there is a collision with the mass if the piece is moved to the next position
  * @param piece piece to test
@@ -140,6 +143,8 @@ void Game_UpdateUserInput(ivec2 currDir);
 
 void Game_FusePiece(Game_FallingPiece* piece);
 
+
+
 /**
  * Read input then apply rotation to the mass if the corresponding button is pressed
  */
@@ -152,6 +157,7 @@ void Game_UpdateRotationInput(const Joystick_State* js);
 void Game_RotateMassQuarter(int quarters);
 
 void Game_PiecesSpawnSystem();
+void Game_DestroyPiecesDuringRotationSystem();
 
 void Game_Init();
 

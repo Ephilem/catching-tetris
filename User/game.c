@@ -95,6 +95,8 @@ void Game_SetMassPosition(ivec2 pos) {
         if (!piece->active) continue;
 
         if (Game_TestCollisionWithMass(piece, (ivec2){0,0})) {
+            Render_ErasePiece(piece);
+
             // before fuse, we need to move the piece in the direction of the movement
             piece->pos = (ivec2){
                 piece->pos.x + delta.x,
@@ -164,6 +166,7 @@ void Game_UpdateUserInput(ivec2 currDir) {
 }
 
 void Game_UpdateRotationInput(const Joystick_State* js) {
+    if (gameState.massGrid.rotating) return;
     if (js->key1 == BTN_PRESSED) {
         gameState.massGrid.rotTarget -= ROT_QUARTER_STEPS;
         gameState.massGrid.rotating = 1;
@@ -204,7 +207,17 @@ void Game_RotateMassQuarter(int quarters) {
     }
 
     Game_UpdateMassAabb();
+
+    // wall kick. move the mass if outside the grid after rotation
+    aabb b = gameState.massGrid.aabb;
+    ivec2 pos = gameState.massGrid.pos;
+    if (pos.x + b.min.x < 0)              pos.x = -b.min.x;
+    if (pos.x + b.max.x >= GLOBAL_GRID_W) pos.x = GLOBAL_GRID_W - 1 - b.max.x;
+    if (pos.y + b.min.y < 0)              pos.y = -b.min.y;
+    if (pos.y + b.max.y >= GLOBAL_GRID_H) pos.y = GLOBAL_GRID_H - 1 - b.max.y;
+    Game_SetMassPosition(pos);
 }
+
 
 void Game_SpawnRandomPiece() {
     // find a avalaible place
@@ -230,9 +243,9 @@ void Game_SpawnRandomPiece() {
 
 uint8_t Game_TestCollisionWithMass(const Game_FallingPiece* piece, ivec2 nextHop) {
     // first test: aabb test
-    aabb pieceBox = Game_CalculateAbsoluteAabb(&piece->pos, &piece->aabb);
     ivec2 nextPos = ivec2_add(piece->pos, nextHop);
-    aabb massBox  = Game_CalculateAbsoluteAabb(&nextPos, &gameState.massGrid.aabb);
+    aabb pieceBox = Game_CalculateAbsoluteAabb(&nextPos, &piece->aabb);
+    aabb massBox  = Game_CalculateAbsoluteAabb(&gameState.massGrid.pos, &gameState.massGrid.aabb);
     if (!aabb_is_colliding(pieceBox, massBox)) return 0;
 
     // second test: presice collision test
@@ -274,6 +287,49 @@ void Game_FusePiece(Game_FallingPiece* piece) {
     Render_FlagMassAsDirty();
 }
 
+static uint8_t Game_TestCollisionWithRotatingMass(const Game_FallingPiece* piece) {
+    const int16_t cos_v = cos_q8(gameState.massGrid.rotCur);
+    const int16_t sin_v = sin_q8(gameState.massGrid.rotCur);
+    const ivec2 pos = gameState.massGrid.pos;
+    const uint8_t (*shape)[4] = TETROMINOS[piece->type][piece->rotation];
+
+    int8_t tx, ty;
+    for (tx = 0; tx < 4; tx++) {
+        for (ty = 0; ty < 4; ty++) {
+            if (!shape[ty][tx]) continue;
+
+            int16_t px = (piece->pos.x + tx - pos.x) * 8;
+            int16_t py = (piece->pos.y + ty - pos.y) * 8;
+
+            // same logic for rendering
+            int16_t sx = ( cos_v * px + sin_v * py) / 256;
+            int16_t sy = (-sin_v * px + cos_v * py) / 256;
+
+            int16_t mx = floordiv8(sx + 4);
+            int16_t my = floordiv8(sy + 4);
+
+            uint8_t cell = Game_ReadMassBlock(mx, my);
+            if (cell != MASS_EMPTY) return 1;
+        }
+    }
+    return 0;
+}
+
+
+void Game_DestroyPiecesDuringRotationSystem() {
+    if (!gameState.massGrid.rotating) return;
+
+    int i;
+    for (i = 0; i < MAX_FALLING_PIECES; i++) {
+        Game_FallingPiece* piece = &gameState.fallingPieces[i];
+        if (!piece->active) continue;
+        if (Game_TestCollisionWithRotatingMass(piece)) {
+            Render_ErasePiece(piece);
+            piece->active = 0;
+        }
+    }
+}
+
 void Game_ApplyGravity() {
     int i;
 
@@ -286,6 +342,7 @@ void Game_ApplyGravity() {
             Game_FusePiece(piece);
         } else {
             piece->pos.y += 1;
+            piece->moved = 1;
         }
 
         // delete if outside the screen and then spawn one more

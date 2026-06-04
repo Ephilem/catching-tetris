@@ -52,15 +52,19 @@ int main(void) {
         if (gameState.irqFlags.flag_tick) {
             gameState.irqFlags.flag_tick = 0;
 
-            gameState.gravityCpt++;
-            if (gameState.gravityCpt >= GRAVITY_SPEED) {
-                gameState.gravityCpt = 0;
-                Game_ApplyGravity();
-            }
+            while (gameState.irqFlags.cpt_tick > 0) {
+                gameState.irqFlags.cpt_tick--;
+                gameState.gravityCpt++;
+                if (gameState.gravityCpt >= GRAVITY_SPEED) {
+                    gameState.gravityCpt = 0;
+                    Game_ApplyGravity();
+                }
 
-            Game_UpdateUserInput(gameState.joystickState.dir);
-            Game_UpdateRotationInput(&gameState.joystickState);
-            Game_PiecesSpawnSystem();
+                Game_UpdateUserInput(gameState.joystickState.dir);
+                Game_UpdateRotationInput(&gameState.joystickState);
+                Game_PiecesSpawnSystem();
+                Game_DestroyPiecesDuringRotationSystem();
+            }
         }
 
         if (gameState.irqFlags.flag_render) {
@@ -76,6 +80,7 @@ void TIMER0_IRQHandler() {
     Joystick_Read(&gameState.joystickState);
 
     // flags updates
+    gameState.irqFlags.cpt_tick++;
     gameState.irqFlags.flag_tick = 1;
 
     // Render flag : up each 10ms*5 = 50ms
