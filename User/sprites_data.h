@@ -17,5 +17,6 @@ extern const Sprite SPT_BlueCube;
 extern const Sprite SPT_OrangeCube;
 
 extern const Sprite SPT_GoldCube;
+extern const Sprite SPT_SilverCube;
 
 #endif

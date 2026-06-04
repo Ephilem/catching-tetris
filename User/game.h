@@ -16,6 +16,8 @@
 #define MASS_EMPTY 0
 #define MASS_CORE 1
 #define MASS_SOLID 2
+#define MASS_CORE_CRITICAL 3
+#define MASS_CRITICAL 4
 
 // val * 10ms best with ARR > render time
 #define DAS_THRESHOLD 19

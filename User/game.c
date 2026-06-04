@@ -118,6 +118,42 @@ void Game_MoveMass(ivec2 delta) {
     Game_SetMassPosition(nextPos);
 }
 
+/**
+ * Explore the grid and mark as critial when 4x4 is found
+ */
+void Game_SearchFor4x4() {
+    int mx, my;
+    for (mx = -MASS_GRID_W_HALF; mx < MASS_GRID_W_HALF; mx++) {
+        for (my = -MASS_GRID_H_HALF; my < MASS_GRID_H_HALF; my++) {
+            if (Game_ReadMassBlock(mx, my) == MASS_EMPTY) continue;
+
+            // check 4x4
+            int dx, dy;
+            uint8_t found4x4 = 1;
+            for (dx = 0; dx < 4 && found4x4; dx++) {
+                for (dy = 0; dy < 4 && found4x4; dy++) {
+                    if (Game_ReadMassBlock(mx + dx, my + dy) == MASS_EMPTY) {
+                        found4x4 = 0;
+                    }
+                }
+            }
+
+            if (found4x4) {
+                for (dx = 0; dx < 4; dx++) {
+                    for (dy = 0; dy < 4; dy++) {
+                        uint8_t v = Game_ReadMassBlock(mx + dx, my + dy);
+                        if (v == MASS_CORE || v == MASS_CORE_CRITICAL)
+                            Game_SetMassBlock(mx + dx, my + dy, MASS_CORE_CRITICAL);
+                        else
+                            Game_SetMassBlock(mx + dx, my + dy, MASS_CRITICAL);
+
+                    }
+                }
+            }
+        }
+    }
+}
+
 void Game_UpdateUserInput(ivec2 currDir) {
     Game_UserInput* input = &gameState.userInput;
 
@@ -285,6 +321,7 @@ void Game_FusePiece(Game_FallingPiece* piece) {
     piece->active = 0;
     Game_UpdateMassAabb();
     Render_FlagMassAsDirty();
+    Game_SearchFor4x4();
 }
 
 static uint8_t Game_TestCollisionWithRotatingMass(const Game_FallingPiece* piece) {
@@ -368,6 +405,17 @@ void Game_Init() {
     Game_SetMassBlock(-1, 0, MASS_SOLID);
     Game_SetMassBlock(0, 1, MASS_SOLID);
     Game_SetMassBlock(0, -1, MASS_SOLID);
+
+    Game_SetMassBlock(1, 1, MASS_SOLID);
+    Game_SetMassBlock(-1, 1, MASS_SOLID);
+    Game_SetMassBlock(-1, -1, MASS_SOLID);
+    Game_SetMassBlock(-1, 1, MASS_SOLID);
+    Game_SetMassBlock(2, 2, MASS_SOLID);
+    Game_SetMassBlock(1, 2, MASS_SOLID);
+    Game_SetMassBlock(0, 2, MASS_SOLID);
+    Game_SetMassBlock(-1, 2, MASS_SOLID);
+
+
     Game_UpdateMassAabb();
 
     Game_SetMassPosition((ivec2){GLOBAL_GRID_W/2, GLOBAL_GRID_H/2});

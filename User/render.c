@@ -38,6 +38,8 @@ void Render_DrawMassCore() {
 
     uint8_t blink = renderState.massState.anim_massCoreBlink;
 
+    uint8_t coreState = Game_ReadMassBlock(0, 0);
+
     if (blink == 2) {
         dessiner_ligne(pixelPos.x, pixelPos.y, 8, 2, 'v', CORE_INDICATOR_COLOR);
         dessiner_ligne(pixelPos.x, pixelPos.y + 6, 8, 2, 'v', CORE_INDICATOR_COLOR);
@@ -46,7 +48,11 @@ void Render_DrawMassCore() {
 
         dessiner_ligne(pixelPos.x + 3, pixelPos.y + 3, 2, 2, 'h', CORE_INDICATOR_COLOR);
     } else {
-        Render_BlitSprite(&SPT_GoldCube, pixelPos.x, pixelPos.y);
+        if (coreState == MASS_CORE_CRITICAL) {
+            Render_BlitSprite(&SPT_SilverCube, pixelPos.x, pixelPos.y);
+        } else {
+            Render_BlitSprite(&SPT_GoldCube, pixelPos.x, pixelPos.y);
+        }
     }
 
     blink++;
@@ -110,6 +116,8 @@ void Render_DrawMass() {
             ivec2 pixel = cellToPixel((ivec2){mx + currPos.x, my + currPos.y});
             if (curr == MASS_SOLID) {
                 Render_BlitSprite(&SPT_GoldCube, pixel.x, pixel.y);
+            } else if (curr == MASS_CRITICAL) {
+                Render_BlitSprite(&SPT_SilverCube, pixel.x, pixel.y);
             } else if (prev != MASS_EMPTY) {
                 Render_EraseCell((ivec2){mx + currPos.x, my + currPos.y});
             }
@@ -200,6 +208,8 @@ void Render_DrawRotatedMass(int16_t cos_v, int16_t sin_v) {
             uint8_t cell = Game_ReadMassBlock(massCellX, massCellY);
             if (cell == MASS_SOLID || cell == MASS_CORE) {
                 color = SPT_GoldCube.data[spriteY * 8 + spriteX];
+            } else if (cell == MASS_CRITICAL || cell == MASS_CORE_CRITICAL) {
+                color = SPT_SilverCube.data[spriteY * 8 + spriteX];
             } else {
                 // draw piece if there is one at this position.
                 int16_t globalCellX = screenX / 8;

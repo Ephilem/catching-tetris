@@ -51,7 +51,14 @@
 #define GOL5 RGB565(251, 219, 73)
 #define GOL6 RGB565(251, 251, 48)
 
+#define SIL1 RGB565(186, 186, 186)
+#define SIL2 RGB565(203, 203, 203)
+#define SIL3 RGB565(219, 219, 219)
+#define SIL4 RGB565(243, 243, 243)
+#define SIL5 RGB565(251, 251, 251)
+
 #define WHI1 White
+#define BLA1 Black
 
 // -------- CUBES ----------
 #define SPT_Cube_W 8
@@ -183,6 +190,22 @@ const unsigned short SPTData_GoldCube[SPT_Cube_W * SPT_Cube_H] = {
 };
 const Sprite SPT_GoldCube = {
     .data = SPTData_GoldCube,
+    .width = SPT_Cube_W,
+    .height = SPT_Cube_H
+};
+
+const unsigned short SPTData_SilverCube[SPT_Cube_W * SPT_Cube_H] = {
+    SIL3, SIL4, SIL4, SIL4, SIL4, SIL4, SIL4, SIL1,
+    SIL2, SIL3, SIL5, SIL5, SIL5, SIL5, SIL4, BLA1,
+    SIL2, SIL3, SIL3, SIL5, SIL5, SIL4, SIL1, BLA1,
+    SIL2, SIL3, SIL3, SIL3, SIL4, SIL1, SIL1, BLA1,
+    SIL2, SIL3, SIL3, SIL2, SIL1, SIL1, SIL1, BLA1,
+    SIL2, SIL3, SIL2, BLA1, BLA1, SIL1, SIL1, BLA1,
+    SIL2, SIL2, BLA1, BLA1, BLA1, BLA1, SIL1, BLA1,
+    SIL1, BLA1, BLA1, BLA1, BLA1, BLA1, BLA1, BLA1,
+};
+const Sprite SPT_SilverCube = {
+    .data = SPTData_SilverCube,
     .width = SPT_Cube_W,
     .height = SPT_Cube_H
 };
