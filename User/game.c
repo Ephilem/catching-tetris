@@ -2,6 +2,7 @@
 
 #include <string.h>
 
+#include "memory.h"
 #include "render.h"
 
 Game_State gameState = {0};
@@ -23,9 +24,12 @@ __INLINE uint8_t Game_ReadMassBlock(int8_t x, int8_t y) {
 }
 
 void Game_IncrementScore(uint32_t amount) {
+    if (gameState.score + amount > MAX_SCORE) return;
+
     gameState.score += amount;
     if (gameState.score > gameState.hiScore) {
         gameState.hiScore = gameState.score;
+        Memory_Write(MEMORY_HI_SCORE_ADDR, &gameState.hiScore, sizeof(gameState.hiScore));
     }
 }
 
@@ -323,11 +327,11 @@ void Game_UpdateUserInput(ivec2 currDir) {
 
 void Game_UpdateRotationInput(const Joystick_State* js) {
     if (gameState.massGrid.rotating) return;
-    if (js->key1 == BTN_PRESSED) {
+    if (js->k1 == BTN_PRESSED) {
         gameState.massGrid.rotTarget -= ROT_QUARTER_STEPS;
         gameState.massGrid.rotating = 1;
     }
-    if (js->key2 == BTN_PRESSED) {
+    if (js->k2 == BTN_PRESSED) {
         gameState.massGrid.rotTarget += ROT_QUARTER_STEPS;
         gameState.massGrid.rotating = 1;
     }
@@ -642,5 +646,12 @@ void Game_Init() {
     Render_FlagMassAsDirty();
     gameState.massGrid.explosionTimer = -1;
     gameState.pv = 100;
+    Memory_Read(MEMORY_HI_SCORE_ADDR, &gameState.hiScore, sizeof(gameState.hiScore));
+
+    // security for corrupted memory
+    if (gameState.hiScore > MAX_SCORE) {
+        gameState.hiScore = 0;
+    }
+
     // Render_RenderHUD();
 }

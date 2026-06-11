@@ -6,6 +6,8 @@
 #include "joystick.h"
 #include "ili_lcd_general.h"
 
+#define MAX_SCORE 99999999
+
 #define HUD_HEIGHT_PX 8*3
 
 #define GLOBAL_GRID_W (LCD_HEIGHT / 8)

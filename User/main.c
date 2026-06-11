@@ -95,6 +95,13 @@ void TIMER0_IRQHandler() {
     TIM_ClearIntPending(LPC_TIM0, TIM_MR0_INT);
 }
 
+void HardFault_HandlerC(uint32_t *stack, uint32_t exc_return)
+{
+    while (1) {
+    }
+}
+
+
 //---------------------------------------------------------------------------------------------
 #ifdef  DEBUG
 void check_failed(uint8_t *file, uint32_t line) { while (1); }

@@ -7,6 +7,8 @@
 
 #define MEMID 0xA0
 
+
+
 //#define PINSEL1 *(unsigned long *) 0x4002C004
 
 void Memory_Init() {

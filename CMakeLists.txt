@@ -79,7 +79,6 @@ set(SOURCES
     User/memory.c
     User/timer.c
     User/main.c
-    User/hardfault_handler.c
         User/joystick.c
         User/joystick.h
         User/math.h
