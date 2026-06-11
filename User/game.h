@@ -6,8 +6,10 @@
 #include "joystick.h"
 #include "ili_lcd_general.h"
 
+#define HUD_HEIGHT_PX 8*3
+
 #define GLOBAL_GRID_W (LCD_HEIGHT / 8)
-#define GLOBAL_GRID_H (LCD_WIDTH / 8)
+#define GLOBAL_GRID_H ((LCD_WIDTH / 8) - (HUD_HEIGHT_PX / 8))
 #define MASS_GRID_W GLOBAL_GRID_W
 #define MASS_GRID_H GLOBAL_GRID_H
 #define MASS_GRID_W_HALF (MASS_GRID_W / 2)
@@ -18,6 +20,8 @@
 #define MASS_SOLID 2
 #define MASS_CORE_CRITICAL 3
 #define MASS_CRITICAL 4
+#define MASS_EXPLOSION_BEAM 5
+
 
 // val * 10ms best with ARR > render time
 #define DAS_THRESHOLD 19
@@ -25,18 +29,27 @@
 
 #define MAX_FALLING_PIECES 4
 #define GRAVITY_SPEED 30 // each 300ms
-#define SPAWN_PIECE_INTERVAL 500 // each 5s
+#define SPAWN_PIECE_INTERVAL 200 // each 5s
 
 // number of step for each frame
 #define ROT_ANIM_SPEED 3
 
+#define COLLISION_NONE 0
+#define COLLISION_SOLID 1
+#define COLLISION_BEAM 2
+
 #define PIECE_I 0
 #define PIECE_O 1
 #define PIECE_T 2
+#define PIECE_T 2
+
 #define PIECE_S 3
 #define PIECE_Z 4
 #define PIECE_J 5
 #define PIECE_L 6
+
+#define MASS_EXPLOSION_BEAM_DURATION 1*100 // 1 seconds
+#define START_EXPLOSION_TIMER (MASS_EXPLOSION_BEAM_DURATION+ (10*100)); // 100*10ms = 10 seconds
 
 /**
  * flags changed by the timer or other interrupt to communicate things to the main gameloop
@@ -58,6 +71,12 @@ typedef struct {
     int16_t rotCur;
     int16_t rotTarget;
     uint8_t rotating;
+
+    uint8_t explosionBlinkStatus; // 0 gray block, 1 gold block
+    volatile int32_t explosionTimer; // -1 not activated
+
+    uint8_t needBringBackLooseBlock;
+    uint8_t cpt_bringBackLooseBlock;
 } Game_MassGrid;
 
 typedef struct {
@@ -96,6 +115,11 @@ typedef struct {
     uint8_t gravityCpt;
     uint16_t spawnCpt;
     Game_FallingPiece fallingPieces[MAX_FALLING_PIECES];
+
+    uint32_t score;
+    uint32_t hiScore;
+    uint8_t pv;
+    uint8_t lvl;
 } Game_State;
 
 extern Game_State gameState;
@@ -128,7 +152,7 @@ __INLINE aabb Game_CalculateAbsoluteAabb(const ivec2 *pos, const aabb *localAabb
  * Test if there is a collision with the mass if the piece is moved to the next position
  * @param piece piece to test
  * @param nextHop position of the piece if it moves (relative to the current position)
- * @return 1 if there is a collision, 0 otherwise
+ * @return COLLISION_NONE if no collision, COLLISION_SOLID if collision with solid part of the mass, COLLISION_BEAM if collision with explosion beam
  */
 uint8_t Game_TestCollisionWithMass(const Game_FallingPiece* piece, ivec2 nextHop);
 
@@ -145,6 +169,7 @@ void Game_UpdateUserInput(ivec2 currDir);
 
 void Game_FusePiece(Game_FallingPiece* piece);
 
+void Game_ExplosionSystemTick();
 
 
 /**
@@ -160,6 +185,7 @@ void Game_RotateMassQuarter(int quarters);
 
 void Game_PiecesSpawnSystem();
 void Game_DestroyPiecesDuringRotationSystem();
+void Game_BringBackLooseBlockSystemTick();
 
 void Game_Init();
 

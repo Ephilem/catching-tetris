@@ -22,6 +22,22 @@ __INLINE uint8_t Game_ReadMassBlock(int8_t x, int8_t y) {
     return gameState.massGrid.grid[ix][iy];
 }
 
+void Game_IncrementScore(uint32_t amount) {
+    gameState.score += amount;
+    if (gameState.score > gameState.hiScore) {
+        gameState.hiScore = gameState.score;
+    }
+}
+
+void Game_DecrementPV(uint8_t amount) {
+    if (amount >= gameState.pv) {
+        gameState.pv = 0;
+        // TODO game over
+    } else {
+        gameState.pv -= amount;
+    }
+}
+
 void Game_CalculatePieceAabb(Game_FallingPiece* piece) {
     aabb box = {3, 3, 0, 0};
     const uint8_t (*shape)[4] = TETROMINOS[piece->type][piece->rotation];
@@ -40,7 +56,7 @@ void Game_CalculatePieceAabb(Game_FallingPiece* piece) {
     piece->aabb = box;
 }
 
-void Game_UpdateMassAabb() {
+aabb Game_CalculateMassAabb(uint8_t withBeam) {
     // calculate aabb
     int8_t mx, my;
     aabb box = {127, 127, -127, -127};
@@ -48,7 +64,8 @@ void Game_UpdateMassAabb() {
     // TODO meilleur façon de faire surement
     for (mx = -MASS_GRID_W_HALF; mx < MASS_GRID_W_HALF; mx++) {
         for (my = -MASS_GRID_H_HALF; my < MASS_GRID_H_HALF; my++) {
-            if (gameState.massGrid.grid[mx+MASS_GRID_W_HALF][my+MASS_GRID_H_HALF] == MASS_EMPTY) continue;
+            uint8_t v = gameState.massGrid.grid[mx+MASS_GRID_W_HALF][my+MASS_GRID_H_HALF];
+            if (v == MASS_EMPTY || (v == MASS_EXPLOSION_BEAM && !withBeam)) continue;
             if (mx < box.min.x) box.min.x = mx;
             if (mx > box.max.x) box.max.x = mx;
             if (my < box.min.y) box.min.y = my;
@@ -56,7 +73,11 @@ void Game_UpdateMassAabb() {
         }
     }
 
-    gameState.massGrid.aabb = box;
+    return box;
+}
+
+void Game_UpdateMassAabb() {
+    gameState.massGrid.aabb = Game_CalculateMassAabb(1);
 }
 
 __INLINE aabb Game_CalculateAbsoluteAabb(const ivec2 *pos, const aabb *localAabb) {
@@ -72,10 +93,100 @@ __INLINE aabb Game_CalculateAbsoluteAabb(const ivec2 *pos, const aabb *localAabb
     };
 }
 
+/**
+ * After a destruction, there can be some block non connected to the
+ * core. We need to bring back tick by tick those blocks to the core to avoid unlogical situation where a block is floating in the air without support
+ * Bring back closer by one loose blocks
+ * @return the number of blocks brought back
+ */
+uint8_t Game_BringBackLooseCell() {
+    // to not surcharge the pile
+    static uint8_t connected[MASS_GRID_W][MASS_GRID_H];
+    static ivec2   bfsQueue[MASS_GRID_W * MASS_GRID_H];
+    static ivec2   loose   [MASS_GRID_W * MASS_GRID_H];
+
+    memset(connected, 0, sizeof(connected));
+
+    static const int8_t dx8[8] = {-1,-1,-1, 0, 0, 1, 1, 1};
+    static const int8_t dy8[8] = {-1, 0, 1,-1, 1,-1, 0, 1};
+
+    int  head = 0, tail = 0;
+    // we know that the core is 0 0
+    int8_t coreX = 0, coreY = 0;
+    connected[0][0] = 1;
+    bfsQueue[tail++] = (ivec2){0, 0};
+
+    // propagate connected
+    while (head < tail) {
+        ivec2 cur = bfsQueue[head++];
+        int d;
+        for (d = 0; d < 8; d++) {
+            int8_t nx = cur.x + dx8[d];
+            int8_t ny = cur.y + dy8[d];
+            int ix = nx + MASS_GRID_W_HALF;
+            int iy = ny + MASS_GRID_H_HALF;
+
+            // bounds check with one comparaison
+            if ((unsigned)ix >= MASS_GRID_W || (unsigned)iy >= MASS_GRID_H) continue;
+            if (connected[ix][iy]) continue;
+
+            uint8_t v = Game_ReadMassBlock(nx, ny);
+            if (v == MASS_EMPTY || v == MASS_EXPLOSION_BEAM) continue;
+
+            connected[ix][iy] = 1;
+            bfsQueue[tail++] = (ivec2){nx, ny};
+        }
+    }
+
+
+    //  collect loose blocks
+    int looseCount = 0;
+    int8_t mx, my;
+    for (mx = -MASS_GRID_W_HALF; mx < MASS_GRID_W_HALF; mx++) {
+        for (my = -MASS_GRID_H_HALF; my < MASS_GRID_H_HALF; my++) {
+            int ix = mx + MASS_GRID_W_HALF;
+            int iy = my + MASS_GRID_H_HALF;
+            if (connected[ix][iy]) continue;
+
+            uint8_t v = Game_ReadMassBlock(mx, my);
+            if (v == MASS_EMPTY || v == MASS_EXPLOSION_BEAM) continue;
+
+            loose[looseCount++] = (ivec2){mx, my};
+        }
+    }
+
+
+    // move all lose blocks to the core
+    int i;
+    for (i = 0; i < looseCount; i++) {
+        mx = loose[i].x;
+        my = loose[i].y;
+
+        uint8_t v = Game_ReadMassBlock(mx, my);
+        if (v == MASS_EMPTY) continue;
+
+        int8_t stepX = (coreX > mx) ? 1 : (coreX < mx) ? -1 : 0;
+        int8_t stepY = (coreY > my) ? 1 : (coreY < my) ? -1 : 0;
+
+        int8_t nx = mx + stepX;
+        int8_t ny = my + stepY;
+
+        if (Game_ReadMassBlock(nx, ny) == MASS_EMPTY) {
+            Game_SetMassBlock(nx, ny, v);
+            Game_SetMassBlock(mx, my, MASS_EMPTY);
+        }
+        // sinon : bloqué ce tick, réessaiera au prochain
+    }
+
+    Game_UpdateMassAabb();
+    Render_FlagMassAsDirty();
+    return looseCount;
+}
+
 void Game_SetMassPosition(ivec2 pos) {
     // clamp pose with aabb
     ivec2 currPos = gameState.massGrid.pos;
-    aabb box = gameState.massGrid.aabb;
+    aabb box = Game_CalculateMassAabb(0);
     if (pos.x + box.min.x < 0 || pos.x + box.max.x >= GLOBAL_GRID_W)
         pos.x = currPos.x;
     if (pos.y + box.min.y < 0 || pos.y + box.max.y >= GLOBAL_GRID_H)
@@ -94,7 +205,8 @@ void Game_SetMassPosition(ivec2 pos) {
         Game_FallingPiece* piece = &gameState.fallingPieces[i];
         if (!piece->active) continue;
 
-        if (Game_TestCollisionWithMass(piece, (ivec2){0,0})) {
+        uint8_t collisionResult = Game_TestCollisionWithMass(piece, (ivec2){0,0});
+        if (collisionResult == COLLISION_SOLID) {
             Render_ErasePiece(piece);
 
             // before fuse, we need to move the piece in the direction of the movement
@@ -104,6 +216,9 @@ void Game_SetMassPosition(ivec2 pos) {
             };
             Game_FusePiece(piece);
             break;
+        } else if (collisionResult == COLLISION_BEAM) {
+            piece->active = 0;
+            Render_ErasePiece(piece);
         }
     }
 
@@ -125,14 +240,16 @@ void Game_SearchFor4x4() {
     int mx, my;
     for (mx = -MASS_GRID_W_HALF; mx < MASS_GRID_W_HALF; mx++) {
         for (my = -MASS_GRID_H_HALF; my < MASS_GRID_H_HALF; my++) {
-            if (Game_ReadMassBlock(mx, my) == MASS_EMPTY) continue;
+            uint8_t v = Game_ReadMassBlock(mx, my);
+            if (v == MASS_EMPTY || v == MASS_EXPLOSION_BEAM) continue;
 
             // check 4x4
             int dx, dy;
             uint8_t found4x4 = 1;
             for (dx = 0; dx < 4 && found4x4; dx++) {
                 for (dy = 0; dy < 4 && found4x4; dy++) {
-                    if (Game_ReadMassBlock(mx + dx, my + dy) == MASS_EMPTY) {
+                    uint8_t v2 = Game_ReadMassBlock(mx + dx, my + dy);
+                    if (v2 == MASS_EMPTY || v2 == MASS_EXPLOSION_BEAM) {
                         found4x4 = 0;
                     }
                 }
@@ -146,9 +263,12 @@ void Game_SearchFor4x4() {
                             Game_SetMassBlock(mx + dx, my + dy, MASS_CORE_CRITICAL);
                         else
                             Game_SetMassBlock(mx + dx, my + dy, MASS_CRITICAL);
-
                     }
                 }
+
+                // start explosion
+                if (gameState.massGrid.explosionTimer == -1)
+                    gameState.massGrid.explosionTimer = START_EXPLOSION_TIMER;
             }
         }
     }
@@ -295,13 +415,16 @@ uint8_t Game_TestCollisionWithMass(const Game_FallingPiece* piece, ivec2 nextHop
             // test collision with mass
             int16_t cellX = nextPos.x + tx;
             int16_t cellY = nextPos.y + ty;
-            if (Game_ReadMassBlock(cellX - gameState.massGrid.pos.x, cellY - gameState.massGrid.pos.y) != MASS_EMPTY) {
-                return 1;
+            uint8_t v = Game_ReadMassBlock(cellX - gameState.massGrid.pos.x, cellY - gameState.massGrid.pos.y);
+            if (v == MASS_EXPLOSION_BEAM) {
+                return COLLISION_BEAM;
+            } else if (v != MASS_EMPTY) {
+                return COLLISION_SOLID;
             }
         }
     }
 
-    return 0;
+    return COLLISION_NONE;
 }
 
 void Game_FusePiece(Game_FallingPiece* piece) {
@@ -318,6 +441,7 @@ void Game_FusePiece(Game_FallingPiece* piece) {
         }
     }
 
+    Game_IncrementScore(10);
     piece->active = 0;
     Game_UpdateMassAabb();
     Render_FlagMassAsDirty();
@@ -363,6 +487,89 @@ void Game_DestroyPiecesDuringRotationSystem() {
         if (Game_TestCollisionWithRotatingMass(piece)) {
             Render_ErasePiece(piece);
             piece->active = 0;
+            Game_DecrementPV(10);
+        }
+    }
+}
+
+void Game_Explode() {
+    // saerch for critical blocks
+    int mx, my;
+    for (mx = -MASS_GRID_W_HALF; mx < MASS_GRID_W_HALF; mx++) {
+        for (my = -MASS_GRID_H_HALF; my < MASS_GRID_H_HALF; my++) {
+            uint8_t v = Game_ReadMassBlock(mx, my);
+            if (v == MASS_EMPTY) continue;
+
+            if (v == MASS_CRITICAL) {
+                int bx, by;
+                for (bx = -MASS_GRID_W_HALF; bx < MASS_GRID_W_HALF; bx++) {
+                    uint8_t v2 = Game_ReadMassBlock(bx, my);
+                    if (v2 != MASS_CORE && v2 != MASS_CORE_CRITICAL) {
+                        Game_SetMassBlock(bx, my, MASS_EXPLOSION_BEAM);
+                    }
+                }
+                for (by = -MASS_GRID_H_HALF; by < MASS_GRID_H_HALF; by++) {
+                    uint8_t v2 = Game_ReadMassBlock(mx, by);
+                    if (v2 != MASS_CORE && v2 != MASS_CORE_CRITICAL) {
+                        Game_SetMassBlock(mx, by, MASS_EXPLOSION_BEAM);
+                    }
+                }
+                Game_IncrementScore(100);
+            } else if (v == MASS_CORE_CRITICAL) {
+                Game_IncrementScore(100);
+                gameState.score += 160;
+            }
+        }
+    }
+    Render_FlagMassAsDirty();
+    Game_UpdateMassAabb();
+}
+
+void Game_ClearExplosionBeam() {
+    int mx, my;
+    for (mx = -MASS_GRID_W_HALF; mx < MASS_GRID_W_HALF; mx++) {
+        for (my = -MASS_GRID_H_HALF; my < MASS_GRID_H_HALF; my++) {
+            if (Game_ReadMassBlock(mx, my) == MASS_EXPLOSION_BEAM) {
+                Game_SetMassBlock(mx, my, MASS_EMPTY);
+            }
+        }
+    }
+
+    Render_FlagMassAsDirty();
+    Game_UpdateMassAabb();
+    gameState.massGrid.needBringBackLooseBlock = 1;
+}
+
+void Game_ExplosionSystemTick() {
+    volatile int32_t explosionTimer = gameState.massGrid.explosionTimer;
+
+    if (explosionTimer != -1) {
+        explosionTimer--;
+
+        if (explosionTimer == MASS_EXPLOSION_BEAM_DURATION) {
+            Game_Explode();
+        } else if (explosionTimer == 0) {
+            explosionTimer = -1;
+            Game_ClearExplosionBeam();
+        }
+        gameState.massGrid.explosionTimer = explosionTimer;
+    }
+
+    gameState.massGrid.explosionTimer = explosionTimer;
+}
+
+void Game_BringBackLooseBlockSystemTick() {
+    if (gameState.massGrid.needBringBackLooseBlock) {
+        gameState.massGrid.needBringBackLooseBlock = 0;
+        if (Game_BringBackLooseCell() > 0) {
+            gameState.massGrid.cpt_bringBackLooseBlock = 10;
+        }
+    }
+
+    if (gameState.massGrid.cpt_bringBackLooseBlock > 0) {
+        gameState.massGrid.cpt_bringBackLooseBlock--;
+        if (gameState.massGrid.cpt_bringBackLooseBlock == 0) {
+            gameState.massGrid.needBringBackLooseBlock = 1;
         }
     }
 }
@@ -375,16 +582,21 @@ void Game_ApplyGravity() {
         if (!piece->active) continue;
 
         ivec2 nextHop = {0, 1};
-        if (Game_TestCollisionWithMass(piece, nextHop)) {
+        uint8_t collisionResult = Game_TestCollisionWithMass(piece, nextHop);
+        if (collisionResult == COLLISION_SOLID) {
             Game_FusePiece(piece);
+        } else if (collisionResult == COLLISION_BEAM) {
+            Render_ErasePiece(piece);
+            piece->active = 0;
         } else {
             piece->pos.y += 1;
             piece->moved = 1;
         }
 
-        // delete if outside the screen and then spawn one more
+        // delete if outside the screen
         if (piece->pos.y > GLOBAL_GRID_H) {
             piece->active = 0;
+            Game_DecrementPV(5);
         }
     }
 }
@@ -406,14 +618,20 @@ void Game_Init() {
     Game_SetMassBlock(0, 1, MASS_SOLID);
     Game_SetMassBlock(0, -1, MASS_SOLID);
 
-    Game_SetMassBlock(1, 1, MASS_SOLID);
-    Game_SetMassBlock(-1, 1, MASS_SOLID);
+    /*
+    Game_SetMassBlock(2, -2, MASS_SOLID);
+    Game_SetMassBlock(1, -2, MASS_SOLID);
+    Game_SetMassBlock(0, -2, MASS_SOLID);
+    Game_SetMassBlock(-1, -2, MASS_SOLID);
+    Game_SetMassBlock(2, -1, MASS_SOLID);
+    Game_SetMassBlock(1, -1, MASS_SOLID);
+    Game_SetMassBlock(0, -1, MASS_SOLID);
     Game_SetMassBlock(-1, -1, MASS_SOLID);
-    Game_SetMassBlock(-1, 1, MASS_SOLID);
-    Game_SetMassBlock(2, 2, MASS_SOLID);
-    Game_SetMassBlock(1, 2, MASS_SOLID);
-    Game_SetMassBlock(0, 2, MASS_SOLID);
-    Game_SetMassBlock(-1, 2, MASS_SOLID);
+
+    Game_SetMassBlock(2, 1, MASS_SOLID);
+    Game_SetMassBlock(1, 1, MASS_SOLID);
+    Game_SetMassBlock(0, 1, MASS_SOLID);
+    Game_SetMassBlock(-1, 1, MASS_SOLID);*/
 
 
     Game_UpdateMassAabb();
@@ -422,4 +640,7 @@ void Game_Init() {
 
     // initial render
     Render_FlagMassAsDirty();
+    gameState.massGrid.explosionTimer = -1;
+    gameState.pv = 100;
+    // Render_RenderHUD();
 }

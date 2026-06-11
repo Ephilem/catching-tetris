@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "lpc17xx.h"
+
 typedef struct {
     int16_t x;
     int16_t y;
@@ -13,16 +15,17 @@ typedef struct {
     ivec2 max;
 } aabb;
 
-static uint32_t rng_state = 0x2545F491u; // seed != 0
-
-static inline uint32_t prng(void) {
-    // xorshift32
+/**
+ * Xorshift32
+ * TODO random because of the ram, at start, this isn't written and random garbage is read. stay like that for now
+ */
+static uint32_t rng_state = 0x2545F491u;
+static inline uint32_t prng() {
     rng_state ^= rng_state << 13;
     rng_state ^= rng_state >> 17;
     rng_state ^= rng_state << 5;
     return rng_state;
 }
-
 
 static inline int rand_range(int min, int max) {
     return min + (int) (prng() % (uint32_t) (max - min + 1));

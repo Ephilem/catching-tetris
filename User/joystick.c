@@ -13,8 +13,8 @@
 // P2.10 = KEY_2
 void Joystick_Init() {
     // make sure direction is correct
-    GPIO_SetDir(2, (1 << 8) | (1 << 12) | (1 << 13), 0);
-    GPIO_SetDir(1, (1 << 20) | (1 << 21) | (1 << 11) | (1 << 10), 0);
+    GPIO_SetDir(2, (1 << 8) | (1 << 12) | (1 << 13) | (1 << 11) | (1 << 10), 0);
+    GPIO_SetDir(1, (1 << 20) | (1 << 21), 0);
 
     FIO_SetMask(2, (1 << 8) | (1 << 12) | (1 << 13), 0);
     FIO_SetMask(1, (1 << 20) | (1 << 21) | (1 << 11) | (1 << 10), 0);

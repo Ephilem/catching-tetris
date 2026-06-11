@@ -154,7 +154,6 @@ void Lcd_StartReadWriteGRAM(const Lcd_StartRWPacket *packet) {
     unsigned int x0, y0, x1, y1;
 
     if (packet->size.x == 0 || packet->size.y == 0) {
-        // Plein ecran. Attention : HEA max = 0xEF (239), VEA max = 0x13F (319)
         x0 = 0;
         y0 = 0;
         x1 = LCD_HEIGHT  - 1;

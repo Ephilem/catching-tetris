@@ -64,6 +64,8 @@ int main(void) {
                 Game_UpdateRotationInput(&gameState.joystickState);
                 Game_PiecesSpawnSystem();
                 Game_DestroyPiecesDuringRotationSystem();
+                Game_ExplosionSystemTick();
+                Game_BringBackLooseBlockSystemTick();
             }
         }
 

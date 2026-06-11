@@ -4,6 +4,7 @@
 #include "sprites_data.h"
 #include "game.h"
 
+
 typedef struct {
     uint8_t flag_massChanged;
     uint8_t anim_massCoreBlink;
@@ -12,6 +13,9 @@ typedef struct {
 
 typedef struct {
     Render_MassState massState;
+    uint32_t prevScore;
+    uint8_t prevPv;
+    uint32_t prevHiScore;
 } Render_State;
 
 extern Render_State renderState;
@@ -28,6 +32,7 @@ void Render_ErasePiece(const Game_FallingPiece* piece);
 
 void Render_RenderTetromino(const Game_FallingPiece* piece);
 
+void Render_RenderHUD();
 void Render_Render();
 
 #endif
