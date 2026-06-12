@@ -344,23 +344,46 @@ void Render_PvBar() {
 void Render_RenderHUD() {
     char scoreStr[9];
     char hiScoreStr[9];
+    char lvlStr[9];
     int offsetY = LCD_WIDTH - HUD_HEIGHT_PX;
 
-    sprintf(scoreStr, "%08lu", (uint32_t) gameState.score);
-    sprintf(hiScoreStr, "%08lu", (uint32_t) gameState.hiScore);
+    sprintf(scoreStr, "%08lu", gameState.score);
+    sprintf(hiScoreStr, "%08lu", gameState.hiScore);
+    sprintf(lvlStr, "LV%02u", gameState.lvl);
 
-    LCD_write_english_string(0, offsetY, "SCORE", White, HUD_BACKGROUND_COLOR);
-    LCD_write_english_string(40, offsetY, scoreStr, White, HUD_BACKGROUND_COLOR);
+    LCD_write_english_string(0, offsetY, "SCR", White, HUD_BACKGROUND_COLOR);
+    LCD_write_english_string(40-16, offsetY, scoreStr, White, HUD_BACKGROUND_COLOR);
 
-    int hx = (LCD_HEIGHT / 2) - 6;
-    LCD_write_english_string(hx, offsetY, "HISCORE", White, HUD_BACKGROUND_COLOR);
-    LCD_write_english_string(hx + 56 , offsetY, hiScoreStr, White, HUD_BACKGROUND_COLOR);
+    int hx = (LCD_HEIGHT / 2) - 28;
+    LCD_write_english_string(hx, offsetY, "HISCR", White, HUD_BACKGROUND_COLOR);
+    LCD_write_english_string(hx + 56-16 , offsetY, hiScoreStr, White, HUD_BACKGROUND_COLOR);
+
+    LCD_write_english_string(LCD_HEIGHT - 32, offsetY, lvlStr, White, HUD_BACKGROUND_COLOR);
 
     Render_PvBar();
 }
 
 
+void Render_GameOver() {
+    if (renderState.gameOverDrawn) return;
+    renderState.gameOverDrawn = 1;
+
+    char scoreStr[9];
+    sprintf(scoreStr, "%08lu", gameState.score);
+
+    int cx = LCD_HEIGHT / 2;
+    int cy = LCD_WIDTH / 2;
+
+    LCD_write_english_string(cx - 48, cy - 16, "GAME OVER", Red, Black);
+    LCD_write_english_string(cx - 48, cy,      scoreStr,  White, Black);
+}
+
 void Render_Render() {
+    if (gameState.gameOver) {
+        Render_GameOver();
+        return;
+    }
+
     int i = 0;
 
     if (gameState.massGrid.rotating) {

@@ -8,15 +8,6 @@
 void Timer_InitMainTimer() {
 	TIM_TIMERCFG_Type setup;
 	TIM_MATCHCFG_Type matchSetup;
-	/*PINSEL_CFG_Type pinsel1;
-	
-	pinsel1.Portnum = 1;
-	pinsel1.Pinnum  = 28;
-	pinsel1.Funcnum = 3;
-	pinsel1.Pinmode = PINSEL_PINMODE_PULLUP;
-	pinsel1.OpenDrain = PINSEL_PINMODE_NORMAL;
-	
-	PINSEL_ConfigPin(&pinsel1);*/
 	
 	setup.PrescaleOption = TIM_PRESCALE_USVAL;
 	setup.PrescaleValue = 1000; // increment each 1ms

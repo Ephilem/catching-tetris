@@ -7,7 +7,6 @@
 
 Game_State gameState = {0};
 
-
 void Game_SetMassBlock(int8_t x, int8_t y, uint8_t mass) {
     int ix = x + MASS_GRID_W_HALF;
     int iy = y + MASS_GRID_H_HALF;
@@ -23,6 +22,48 @@ __INLINE uint8_t Game_ReadMassBlock(int8_t x, int8_t y) {
     return gameState.massGrid.grid[ix][iy];
 }
 
+void Game_CheckLevelUp() {
+    uint8_t newLvl = 1;
+    uint8_t i;
+    for (i = 0; i < NUM_BASE_LEVELS; i++) {
+        if (gameState.score >= LEVELS[i].scoreThreshold)
+            newLvl = i + 1;
+        else
+            break;
+    }
+    if (newLvl == NUM_BASE_LEVELS) {
+        uint32_t extra = gameState.score - LEVELS[NUM_BASE_LEVELS - 1].scoreThreshold;
+        newLvl += (uint8_t)(extra / 20000);
+        if (newLvl > 99) newLvl = 99; // max = 99
+    }
+    gameState.lvl = newLvl;
+}
+
+uint16_t Game_GetGravityTicks() {
+    uint16_t ms;
+    if (gameState.lvl <= NUM_BASE_LEVELS) {
+        ms = LEVELS[gameState.lvl - 1].fallPeriodMs;
+    } else {
+        // dynamicly update the gravity tick (min=100)
+        int extra = gameState.lvl - NUM_BASE_LEVELS;
+        int val = 240 - extra * 20;
+        ms = (val < 100) ? 100 : (uint16_t)val;
+    }
+    return ms / 10; // because 1 tick is 10ms
+}
+
+uint16_t Game_GetSpawnTicks() {
+    uint16_t ms;
+    if (gameState.lvl <= NUM_BASE_LEVELS) {
+        ms = LEVELS[gameState.lvl - 1].spawnPeriodMs;
+    } else {
+        int extra = gameState.lvl - NUM_BASE_LEVELS;
+        int val = 1000 - extra * 50;
+        ms = (val < 600) ? 600 : (uint16_t)val;
+    }
+    return ms / 10; // 1 tick = 10 ms
+}
+
 void Game_IncrementScore(uint32_t amount) {
     if (gameState.score + amount > MAX_SCORE) return;
 
@@ -31,12 +72,13 @@ void Game_IncrementScore(uint32_t amount) {
         gameState.hiScore = gameState.score;
         Memory_Write(MEMORY_HI_SCORE_ADDR, &gameState.hiScore, sizeof(gameState.hiScore));
     }
+    Game_CheckLevelUp();
 }
 
 void Game_DecrementPV(uint8_t amount) {
     if (amount >= gameState.pv) {
         gameState.pv = 0;
-        // TODO game over
+        gameState.gameOver = 1;
     } else {
         gameState.pv -= amount;
     }
@@ -267,12 +309,15 @@ void Game_SearchFor4x4() {
                             Game_SetMassBlock(mx + dx, my + dy, MASS_CORE_CRITICAL);
                         else
                             Game_SetMassBlock(mx + dx, my + dy, MASS_CRITICAL);
+                        Game_IncrementScore(25 * gameState.lvl);
                     }
                 }
 
                 // start explosion
-                if (gameState.massGrid.explosionTimer == -1)
+                if (gameState.massGrid.explosionTimer == -1) {
+                    Game_IncrementScore(100 * gameState.lvl);
                     gameState.massGrid.explosionTimer = START_EXPLOSION_TIMER;
+                }
             }
         }
     }
@@ -445,7 +490,7 @@ void Game_FusePiece(Game_FallingPiece* piece) {
         }
     }
 
-    Game_IncrementScore(10);
+    Game_IncrementScore(5 * gameState.lvl);
     piece->active = 0;
     Game_UpdateMassAabb();
     Render_FlagMassAsDirty();
@@ -518,10 +563,10 @@ void Game_Explode() {
                         Game_SetMassBlock(mx, by, MASS_EXPLOSION_BEAM);
                     }
                 }
-                Game_IncrementScore(100);
+                Game_IncrementScore(50 * gameState.lvl);
             } else if (v == MASS_CORE_CRITICAL) {
-                Game_IncrementScore(100);
-                gameState.score += 160;
+                Game_IncrementScore(50 * gameState.lvl);
+                Game_SetMassBlock(mx, my, MASS_CORE);
             }
         }
     }
@@ -550,7 +595,8 @@ void Game_ExplosionSystemTick() {
     if (explosionTimer != -1) {
         explosionTimer--;
 
-        if (explosionTimer == MASS_EXPLOSION_BEAM_DURATION) {
+        if (explosionTimer == MASS_EXPLOSION_BEAM_DURATION || gameState.joystickState.k6 == BTN_PRESSED) {
+            explosionTimer = MASS_EXPLOSION_BEAM_DURATION;
             Game_Explode();
         } else if (explosionTimer == 0) {
             explosionTimer = -1;
@@ -608,7 +654,7 @@ void Game_ApplyGravity() {
 void Game_PiecesSpawnSystem() {
     if (gameState.spawnCpt == 0) {
         Game_SpawnRandomPiece();
-        gameState.spawnCpt = SPAWN_PIECE_INTERVAL;
+        gameState.spawnCpt = Game_GetSpawnTicks();
     } else {
         gameState.spawnCpt--;
     }
@@ -616,6 +662,9 @@ void Game_PiecesSpawnSystem() {
 }
 
 void Game_Init() {
+    memset(&gameState, 0, sizeof(gameState));
+    memset(&renderState, 0, sizeof(renderState));
+    Lcd_Clear(Black);
     Game_SetMassBlock(0, 0, MASS_CORE);
     Game_SetMassBlock(1, 0, MASS_SOLID);
     Game_SetMassBlock(-1, 0, MASS_SOLID);
@@ -653,5 +702,6 @@ void Game_Init() {
         gameState.hiScore = 0;
     }
 
+    gameState.lvl = 1;
     // Render_RenderHUD();
 }

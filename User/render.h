@@ -16,6 +16,7 @@ typedef struct {
     uint32_t prevScore;
     uint8_t prevPv;
     uint32_t prevHiScore;
+    uint8_t gameOverDrawn;
 } Render_State;
 
 extern Render_State renderState;

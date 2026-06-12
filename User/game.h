@@ -53,6 +53,27 @@
 #define MASS_EXPLOSION_BEAM_DURATION 1*100 // 1 seconds
 #define START_EXPLOSION_TIMER (MASS_EXPLOSION_BEAM_DURATION+ (10*100)); // 100*10ms = 10 seconds
 
+#define NUM_BASE_LEVELS 10
+
+typedef struct {
+    uint32_t scoreThreshold;
+    uint16_t fallPeriodMs;
+    uint16_t spawnPeriodMs;
+} LevelEntry;
+
+static const LevelEntry LEVELS[NUM_BASE_LEVELS] = {
+    {0, 800, 3000},
+    {500, 700, 2700},
+    {1500, 600, 2400},
+    {3500, 520, 2100},
+    {6500, 450, 1800},
+    {11000, 390, 1600},
+    {17000, 340, 1400},
+    {25000, 300, 1200},
+    {35000, 270, 1100},
+    {50000, 240, 1000},
+};
+
 /**
  * flags changed by the timer or other interrupt to communicate things to the main gameloop
  */
@@ -82,8 +103,8 @@ typedef struct {
 } Game_MassGrid;
 
 typedef struct {
-    uint8_t active : 1; // differenciate array cell with real data in it
-    uint8_t moved : 1; // redraw only when moved
+    uint8_t active: 1; // differenciate array cell with real data in it
+    uint8_t moved: 1; // redraw only when moved
 
     uint8_t type; // 0-6
     uint8_t rotation;
@@ -122,6 +143,7 @@ typedef struct {
     uint32_t hiScore;
     uint8_t pv;
     uint8_t lvl;
+    uint8_t gameOver;
 } Game_State;
 
 extern Game_State gameState;
@@ -148,7 +170,7 @@ void Game_SetMassPosition(ivec2 pos);
 
 void Game_SpawnRandomPiece();
 
-__INLINE aabb Game_CalculateAbsoluteAabb(const ivec2 *pos, const aabb *localAabb);
+__INLINE aabb Game_CalculateAbsoluteAabb(const ivec2* pos, const aabb* localAabb);
 
 /**
  * Test if there is a collision with the mass if the piece is moved to the next position
@@ -186,10 +208,18 @@ void Game_UpdateRotationInput(const Joystick_State* js);
 void Game_RotateMassQuarter(int quarters);
 
 void Game_PiecesSpawnSystem();
+
 void Game_DestroyPiecesDuringRotationSystem();
+
 void Game_BringBackLooseBlockSystemTick();
 
 void Game_Init();
+
+void Game_CheckLevelUp();
+
+uint16_t Game_GetGravityTicks();
+
+uint16_t Game_GetSpawnTicks();
 
 
 ///////////////

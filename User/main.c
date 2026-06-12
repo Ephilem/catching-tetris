@@ -49,13 +49,18 @@ int main(void) {
     Timer_StartMainTimer();
 
     while (1) {
-        if (gameState.irqFlags.flag_tick) {
+        if (gameState.irqFlags.flag_tick && !gameState.gameOver) {
             gameState.irqFlags.flag_tick = 0;
 
             while (gameState.irqFlags.cpt_tick > 0) {
                 gameState.irqFlags.cpt_tick--;
                 gameState.gravityCpt++;
-                if (gameState.gravityCpt >= GRAVITY_SPEED) {
+
+
+                uint16_t gravityThreshold = (gameState.joystickState.k7 == BTN_HELD || gameState.joystickState.k7 == BTN_PRESSED)
+                    ? 8
+                    : Game_GetGravityTicks();
+                if (gameState.gravityCpt >= gravityThreshold) {
                     gameState.gravityCpt = 0;
                     Game_ApplyGravity();
                 }
@@ -67,6 +72,10 @@ int main(void) {
                 Game_ExplosionSystemTick();
                 Game_BringBackLooseBlockSystemTick();
             }
+        } else if (gameState.gameOver) {
+             if (gameState.joystickState.k1 == BTN_PRESSED) {
+                Game_Init();
+             }
         }
 
         if (gameState.irqFlags.flag_render) {
