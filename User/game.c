@@ -12,7 +12,6 @@ void Game_SetMassBlock(int8_t x, int8_t y, uint8_t mass) {
     int iy = y + MASS_GRID_H_HALF;
     if (ix < 0 || ix >= MASS_GRID_W || iy < 0 || iy >= MASS_GRID_H) return;
     gameState.massGrid.grid[ix][iy] = mass;
-
 }
 
 __INLINE uint8_t Game_ReadMassBlock(int8_t x, int8_t y) {
@@ -33,7 +32,7 @@ void Game_CheckLevelUp() {
     }
     if (newLvl == NUM_BASE_LEVELS) {
         uint32_t extra = gameState.score - LEVELS[NUM_BASE_LEVELS - 1].scoreThreshold;
-        newLvl += (uint8_t)(extra / 20000);
+        newLvl += (uint8_t) (extra / 20000);
         if (newLvl > 99) newLvl = 99; // max = 99
     }
     gameState.lvl = newLvl;
@@ -47,7 +46,7 @@ uint16_t Game_GetGravityTicks() {
         // dynamicly update the gravity tick (min=100)
         int extra = gameState.lvl - NUM_BASE_LEVELS;
         int val = 240 - extra * 20;
-        ms = (val < 100) ? 100 : (uint16_t)val;
+        ms = (val < 100) ? 100 : (uint16_t) val;
     }
     return ms / 10; // because 1 tick is 10ms
 }
@@ -59,7 +58,7 @@ uint16_t Game_GetSpawnTicks() {
     } else {
         int extra = gameState.lvl - NUM_BASE_LEVELS;
         int val = 1000 - extra * 50;
-        ms = (val < 600) ? 600 : (uint16_t)val;
+        ms = (val < 600) ? 600 : (uint16_t) val;
     }
     return ms / 10; // 1 tick = 10 ms
 }
@@ -84,7 +83,7 @@ void Game_DecrementPV(uint8_t amount) {
     }
 }
 
-void Game_CalculatePieceAabb(Game_FallingPiece* piece) {
+void Game_CalculatePieceAabb(Game_FallingPiece *piece) {
     aabb box = {3, 3, 0, 0};
     const uint8_t (*shape)[4] = TETROMINOS[piece->type][piece->rotation];
     int8_t tx, ty;
@@ -110,7 +109,7 @@ aabb Game_CalculateMassAabb(uint8_t withBeam) {
     // TODO meilleur façon de faire surement
     for (mx = -MASS_GRID_W_HALF; mx < MASS_GRID_W_HALF; mx++) {
         for (my = -MASS_GRID_H_HALF; my < MASS_GRID_H_HALF; my++) {
-            uint8_t v = gameState.massGrid.grid[mx+MASS_GRID_W_HALF][my+MASS_GRID_H_HALF];
+            uint8_t v = gameState.massGrid.grid[mx + MASS_GRID_W_HALF][my + MASS_GRID_H_HALF];
             if (v == MASS_EMPTY || (v == MASS_EXPLOSION_BEAM && !withBeam)) continue;
             if (mx < box.min.x) box.min.x = mx;
             if (mx > box.max.x) box.max.x = mx;
@@ -148,15 +147,15 @@ __INLINE aabb Game_CalculateAbsoluteAabb(const ivec2 *pos, const aabb *localAabb
 uint8_t Game_BringBackLooseCell() {
     // to not surcharge the pile
     static uint8_t connected[MASS_GRID_W][MASS_GRID_H];
-    static ivec2   bfsQueue[MASS_GRID_W * MASS_GRID_H];
-    static ivec2   loose   [MASS_GRID_W * MASS_GRID_H];
+    static ivec2 bfsQueue[MASS_GRID_W * MASS_GRID_H];
+    static ivec2 loose[MASS_GRID_W * MASS_GRID_H];
 
     memset(connected, 0, sizeof(connected));
 
-    static const int8_t dx8[8] = {-1,-1,-1, 0, 0, 1, 1, 1};
-    static const int8_t dy8[8] = {-1, 0, 1,-1, 1,-1, 0, 1};
+    static const int8_t dx8[8] = {-1, -1, -1, 0, 0, 1, 1, 1};
+    static const int8_t dy8[8] = {-1, 0, 1, -1, 1, -1, 0, 1};
 
-    int  head = 0, tail = 0;
+    int head = 0, tail = 0;
     // we know that the core is 0 0
     int8_t coreX = 0, coreY = 0;
     connected[0][0] = 1;
@@ -173,7 +172,7 @@ uint8_t Game_BringBackLooseCell() {
             int iy = ny + MASS_GRID_H_HALF;
 
             // bounds check with one comparaison
-            if ((unsigned)ix >= MASS_GRID_W || (unsigned)iy >= MASS_GRID_H) continue;
+            if ((unsigned) ix >= MASS_GRID_W || (unsigned) iy >= MASS_GRID_H) continue;
             if (connected[ix][iy]) continue;
 
             uint8_t v = Game_ReadMassBlock(nx, ny);
@@ -248,10 +247,10 @@ void Game_SetMassPosition(ivec2 pos) {
     // test for collision
     int i = 0;
     for (i = 0; i < MAX_FALLING_PIECES; i++) {
-        Game_FallingPiece* piece = &gameState.fallingPieces[i];
+        Game_FallingPiece *piece = &gameState.fallingPieces[i];
         if (!piece->active) continue;
 
-        uint8_t collisionResult = Game_TestCollisionWithMass(piece, (ivec2){0,0});
+        uint8_t collisionResult = Game_TestCollisionWithMass(piece, (ivec2){0, 0});
         if (collisionResult == COLLISION_SOLID) {
             Render_ErasePiece(piece);
 
@@ -324,9 +323,9 @@ void Game_SearchFor4x4() {
 }
 
 void Game_UpdateUserInput(ivec2 currDir) {
-    Game_UserInput* input = &gameState.userInput;
+    Game_UserInput *input = &gameState.userInput;
 
-    ivec2 dir = {0,0};
+    ivec2 dir = {0, 0};
     if (currDir.x != 0 && currDir.y != 0) {
         // remove diagonal input
         dir = (ivec2){currDir.x, 0};
@@ -370,7 +369,7 @@ void Game_UpdateUserInput(ivec2 currDir) {
     }
 }
 
-void Game_UpdateRotationInput(const Joystick_State* js) {
+void Game_UpdateRotationInput(const Joystick_State *js) {
     if (gameState.massGrid.rotating) return;
     if (js->k1 == BTN_PRESSED) {
         gameState.massGrid.rotTarget -= ROT_QUARTER_STEPS;
@@ -397,8 +396,13 @@ void Game_RotateMassQuarter(int quarters) {
                 if (v == MASS_EMPTY) continue;
 
                 int nx, ny;
-                if (dir > 0) { nx = -my; ny =  mx; }
-                else         { nx =  my; ny = -mx; }
+                if (dir > 0) {
+                    nx = -my;
+                    ny = mx;
+                } else {
+                    nx = my;
+                    ny = -mx;
+                }
 
                 int ix = nx + MASS_GRID_W_HALF;
                 int iy = ny + MASS_GRID_H_HALF;
@@ -416,9 +420,9 @@ void Game_RotateMassQuarter(int quarters) {
     // wall kick. move the mass if outside the grid after rotation
     aabb b = gameState.massGrid.aabb;
     ivec2 pos = gameState.massGrid.pos;
-    if (pos.x + b.min.x < 0)              pos.x = -b.min.x;
+    if (pos.x + b.min.x < 0) pos.x = -b.min.x;
     if (pos.x + b.max.x >= GLOBAL_GRID_W) pos.x = GLOBAL_GRID_W - 1 - b.max.x;
-    if (pos.y + b.min.y < 0)              pos.y = -b.min.y;
+    if (pos.y + b.min.y < 0) pos.y = -b.min.y;
     if (pos.y + b.max.y >= GLOBAL_GRID_H) pos.y = GLOBAL_GRID_H - 1 - b.max.y;
     Game_SetMassPosition(pos);
 }
@@ -427,7 +431,7 @@ void Game_RotateMassQuarter(int quarters) {
 void Game_SpawnRandomPiece() {
     // find a avalaible place
     int i;
-    Game_FallingPiece* p = NULL;
+    Game_FallingPiece *p = NULL;
     for (i = 0; i < MAX_FALLING_PIECES; i++) {
         if (!gameState.fallingPieces[i].active) {
             p = &gameState.fallingPieces[i];
@@ -442,15 +446,15 @@ void Game_SpawnRandomPiece() {
     p->rotation = rand_range(0, 3);
     // p->type = 0;
     // p->rotation = 3;
-    p->pos = (ivec2){rand_range(2, GLOBAL_GRID_W-5), -3};
+    p->pos = (ivec2){rand_range(2, GLOBAL_GRID_W - 5), -3};
     Game_CalculatePieceAabb(p);
 }
 
-uint8_t Game_TestCollisionWithMass(const Game_FallingPiece* piece, ivec2 nextHop) {
+uint8_t Game_TestCollisionWithMass(const Game_FallingPiece *piece, ivec2 nextHop) {
     // first test: aabb test
     ivec2 nextPos = ivec2_add(piece->pos, nextHop);
     aabb pieceBox = Game_CalculateAbsoluteAabb(&nextPos, &piece->aabb);
-    aabb massBox  = Game_CalculateAbsoluteAabb(&gameState.massGrid.pos, &gameState.massGrid.aabb);
+    aabb massBox = Game_CalculateAbsoluteAabb(&gameState.massGrid.pos, &gameState.massGrid.aabb);
     if (!aabb_is_colliding(pieceBox, massBox)) return 0;
 
     // second test: presice collision test
@@ -476,7 +480,7 @@ uint8_t Game_TestCollisionWithMass(const Game_FallingPiece* piece, ivec2 nextHop
     return COLLISION_NONE;
 }
 
-void Game_FusePiece(Game_FallingPiece* piece) {
+void Game_FusePiece(Game_FallingPiece *piece) {
     const uint8_t (*shape)[4] = TETROMINOS[piece->type][piece->rotation];
     int8_t tx, ty;
 
@@ -497,7 +501,7 @@ void Game_FusePiece(Game_FallingPiece* piece) {
     Game_SearchFor4x4();
 }
 
-static uint8_t Game_TestCollisionWithRotatingMass(const Game_FallingPiece* piece) {
+static uint8_t Game_TestCollisionWithRotatingMass(const Game_FallingPiece *piece) {
     const int16_t cos_v = cos_q8(gameState.massGrid.rotCur);
     const int16_t sin_v = sin_q8(gameState.massGrid.rotCur);
     const ivec2 pos = gameState.massGrid.pos;
@@ -512,7 +516,7 @@ static uint8_t Game_TestCollisionWithRotatingMass(const Game_FallingPiece* piece
             int16_t py = (piece->pos.y + ty - pos.y) * 8;
 
             // same logic for rendering
-            int16_t sx = ( cos_v * px + sin_v * py) / 256;
+            int16_t sx = (cos_v * px + sin_v * py) / 256;
             int16_t sy = (-sin_v * px + cos_v * py) / 256;
 
             int16_t mx = floordiv8(sx + 4);
@@ -531,7 +535,7 @@ void Game_DestroyPiecesDuringRotationSystem() {
 
     int i;
     for (i = 0; i < MAX_FALLING_PIECES; i++) {
-        Game_FallingPiece* piece = &gameState.fallingPieces[i];
+        Game_FallingPiece *piece = &gameState.fallingPieces[i];
         if (!piece->active) continue;
         if (Game_TestCollisionWithRotatingMass(piece)) {
             Render_ErasePiece(piece);
@@ -628,7 +632,7 @@ void Game_ApplyGravity() {
     int i;
 
     for (i = 0; i < MAX_FALLING_PIECES; i++) {
-        Game_FallingPiece* piece = &gameState.fallingPieces[i];
+        Game_FallingPiece *piece = &gameState.fallingPieces[i];
         if (!piece->active) continue;
 
         ivec2 nextHop = {0, 1};
@@ -658,7 +662,6 @@ void Game_PiecesSpawnSystem() {
     } else {
         gameState.spawnCpt--;
     }
-
 }
 
 void Game_Init() {
@@ -689,7 +692,7 @@ void Game_Init() {
 
     Game_UpdateMassAabb();
 
-    Game_SetMassPosition((ivec2){GLOBAL_GRID_W/2, GLOBAL_GRID_H/2});
+    Game_SetMassPosition((ivec2){GLOBAL_GRID_W / 2, GLOBAL_GRID_H / 2});
 
     // initial render
     Render_FlagMassAsDirty();
